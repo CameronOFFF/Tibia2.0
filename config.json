@@ -1,0 +1,77 @@
+{
+  "fps": 15,
+  "window_title_prefix": "Tibia - ",
+  "hp_bar_roi": {"x": 100, "y": 80, "w": 180, "h": 14},
+  "mp_bar_roi": {"x": 100, "y": 102, "w": 180, "h": 14},
+  "hp_hsv_lower": [35, 40, 40],
+  "hp_hsv_upper": [90, 255, 255],
+  "mp_hsv_lower": [90, 40, 40],
+  "mp_hsv_upper": [130, 255, 255],
+  "smoothing": {
+    "mode": "ema",
+    "ema_alpha": 0.35,
+    "median_window": 5
+  },
+  "alerts": {
+    "sound_enabled": true,
+    "default_cooldown_seconds": 3.0,
+    "log_file": "monitor.log"
+  },
+  "rules": [
+    {
+      "id": "rule_ring_hp_40",
+      "category": "rings_amulets",
+      "metric": "HP",
+      "operator": "<=",
+      "threshold": 40,
+      "action_name": "Trocar para Ring X",
+      "key": "F1",
+      "cooldown_seconds": 3.0,
+      "enabled": true
+    },
+    {
+      "id": "rule_heal_hp_80",
+      "category": "healing",
+      "metric": "HP",
+      "operator": "<=",
+      "threshold": 80,
+      "action_name": "Usar Potion A",
+      "key": "F2",
+      "cooldown_seconds": 2.0,
+      "enabled": true
+    },
+    {
+      "id": "rule_heal_hp_50",
+      "category": "healing",
+      "metric": "HP",
+      "operator": "<=",
+      "threshold": 50,
+      "action_name": "Usar Potion B",
+      "key": "F3",
+      "cooldown_seconds": 2.0,
+      "enabled": true
+    },
+    {
+      "id": "rule_mana_75",
+      "category": "healing",
+      "metric": "MP",
+      "operator": "<=",
+      "threshold": 75,
+      "action_name": "Usar Potion A",
+      "key": "F2",
+      "cooldown_seconds": 2.0,
+      "enabled": true
+    },
+    {
+      "id": "rule_mana_50",
+      "category": "healing",
+      "metric": "MP",
+      "operator": "<=",
+      "threshold": 50,
+      "action_name": "Usar Potion B",
+      "key": "F3",
+      "cooldown_seconds": 2.0,
+      "enabled": true
+    }
+  ]
+}
