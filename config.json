@@ -135,5 +135,9 @@
   },
   "ocr": {
     "tesseract_cmd": ""
+  },
+  "recording": {
+    "enabled": false,
+    "output_dir": "recordings"
   }
 }

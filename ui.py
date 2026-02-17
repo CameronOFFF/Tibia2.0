@@ -19,6 +19,7 @@ import winsound
 
 from bar_reader import BarReader, ROI
 from ocr_reader import OCRBarReader
+from recorder import WindowRecorder
 from rules_engine import Rule, RulesEngine
 from window_capture import TibiaWindowCapture
 
@@ -83,6 +84,8 @@ class TibiaHPMonitorApp:
         ocr_cfg = self.config.get("ocr", {})
         self.ocr_reader = OCRBarReader(tesseract_cmd=ocr_cfg.get("tesseract_cmd"))
         self.logger = self._build_logger(self.config["alerts"].get("log_file", "monitor.log"))
+        recording_cfg = self.config.get("recording", {})
+        self.recorder = WindowRecorder(output_dir=recording_cfg.get("output_dir", "recordings"))
 
         smoothing = self.config.get("smoothing", {})
         self.reader.configure_smoothing(
@@ -101,6 +104,7 @@ class TibiaHPMonitorApp:
         self.status_value = tk.StringVar(value="Parado")
         self.fps_value = tk.StringVar(value="0.0")
         self.toast_value = tk.StringVar(value="")
+        self.recording_value = tk.StringVar(value="OFF")
         self.hp_roi_str = tk.StringVar()
         self.mp_roi_str = tk.StringVar()
 
@@ -153,6 +157,8 @@ class TibiaHPMonitorApp:
         ttk.Button(top, text="Parar", command=self.stop_monitoring).pack(side="left")
         ttk.Button(top, text="Calibrar ROIs", command=self.calibrate_rois).pack(side="left", padx=6)
         ttk.Button(top, text="Salvar Config", command=self.save_config).pack(side="left")
+        ttk.Button(top, text="Iniciar Gravação", command=self.start_recording).pack(side="left", padx=6)
+        ttk.Button(top, text="Parar Gravação", command=self.stop_recording).pack(side="left")
 
         stats = ttk.LabelFrame(self.root, text="Status", padding=8)
         stats.pack(fill="x", padx=8, pady=4)
@@ -173,6 +179,8 @@ class TibiaHPMonitorApp:
         ttk.Label(stats, textvariable=self.status_value).grid(row=0, column=4, sticky="w")
         ttk.Label(stats, text="FPS:").grid(row=1, column=3, sticky="e", padx=(30, 4))
         ttk.Label(stats, textvariable=self.fps_value).grid(row=1, column=4, sticky="w")
+        ttk.Label(stats, text="Gravação:").grid(row=0, column=5, sticky="e", padx=(20, 4))
+        ttk.Label(stats, textvariable=self.recording_value).grid(row=0, column=6, sticky="w")
 
         ttk.Label(stats, text="Histórico 60s (HP/MP):").grid(row=2, column=0, pady=(8, 0), sticky="w")
         self.history_label = ttk.Label(stats, text="-")
@@ -256,6 +264,36 @@ class TibiaHPMonitorApp:
         if self.config.get("alerts", {}).get("sound_enabled", True):
             winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
 
+    def start_recording(self) -> None:
+        if not self.selected_hwnd:
+            selected = self.window_combo.get().strip()
+            hwnd = self.windows_map.get(selected)
+            if hwnd:
+                self.selected_hwnd = hwnd
+
+        if not self.selected_hwnd:
+            messagebox.showwarning("Gravação", "Selecione uma janela Tibia primeiro.")
+            return
+
+        frame = self.capture.grab_window_frame(self.selected_hwnd)
+        if frame is None:
+            messagebox.showwarning("Gravação", "Não foi possível capturar a janela para iniciar gravação.")
+            return
+
+        fps_target = max(1, int(self.config.get("fps", 15)))
+        state = self.recorder.start(frame.shape[1], frame.shape[0], fps=fps_target)
+        if state.active:
+            self.recording_value.set("ON")
+            self.logger.info("Gravação iniciada: %s", state.output_path)
+        else:
+            messagebox.showerror("Gravação", "Falha ao iniciar gravação.")
+
+    def stop_recording(self) -> None:
+        state = self.recorder.stop()
+        self.recording_value.set("OFF")
+        if state.output_path:
+            self.logger.info("Gravação finalizada: %s", state.output_path)
+
     def _status_from_hp(self, hp: float) -> str:
         if hp <= 40:
             return "Crítico"
@@ -300,6 +338,8 @@ class TibiaHPMonitorApp:
         self.running = False
         self.status_value.set("Parado")
         self.logger.info("Monitoramento parado")
+        if self.recorder.is_recording:
+            self.stop_recording()
 
     def _update_history(self, hp: float, mp: float) -> None:
         now = time.time()
@@ -358,6 +398,9 @@ class TibiaHPMonitorApp:
                     self.root.after(0, lambda: self.status_value.set("Falha ao capturar janela"))
                     time.sleep(0.15)
                     continue
+
+                if self.recorder.is_recording:
+                    self.recorder.write(frame)
 
                 try:
                     if read_mode == "ocr_text":
@@ -568,5 +611,5 @@ class TibiaHPMonitorApp:
 def launch_app() -> None:
     root = tk.Tk()
     app = TibiaHPMonitorApp(root)
-    root.protocol("WM_DELETE_WINDOW", lambda: (app.stop_monitoring(), root.destroy()))
+    root.protocol("WM_DELETE_WINDOW", lambda: (app.stop_recording(), app.stop_monitoring(), root.destroy()))
     root.mainloop()

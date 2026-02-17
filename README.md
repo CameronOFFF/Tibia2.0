@@ -47,6 +47,18 @@ C:\Program Files\Tesseract-OCR\tesseract.exe
 
 Se OCR falhar em um frame, o app usa fallback da leitura por barra automaticamente.
 
+
+## Captura em stream contínuo e gravação (sem Xbox/OBS)
+
+O app já trabalha com captura contínua da janela (stream de frames) e agora também permite gravar vídeo MP4 da janela do Tibia pelos botões:
+
+- **Iniciar Gravação**
+- **Parar Gravação**
+
+Os vídeos são salvos em `recordings/` (configurável em `config.json` -> `recording.output_dir`).
+
+> Observação: integração direta com Xbox Game Bar ou OBS não é necessária para detecção. A detecção em tempo real usa o stream interno da janela para manter baixa latência.
+
 ## Fluxo de uso
 
 1. Abra o Tibia e mantenha a interface no layout desejado.
