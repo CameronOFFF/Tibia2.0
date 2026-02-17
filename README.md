@@ -51,6 +51,7 @@ No `config.json` você pode ajustar as faixas de cor:
 O `config.json` de exemplo já vem preparado para o layout com barra de HP **vermelha** e MP **azul** no topo da tela.
 
 Para leitura correta, deixe a ROI o mais justa possível na área interna da barra (evite bordas/metade de outros elementos), pois bordas coloridas podem causar falso 100%.
+- Para barras do Tibia, prefira ROI com altura curta (ex.: 8 a 12 px), exatamente sobre o preenchimento da barra.
 
 Dica: se a % ficar instável, refine os ranges HSV e reduza ruído com:
 

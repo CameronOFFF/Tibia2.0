@@ -52,13 +52,13 @@ class BarReader:
         return roi.x >= 0 and roi.y >= 0 and roi.w > 0 and roi.h > 0 and roi.x + roi.w <= w and roi.y + roi.h <= h
 
     @staticmethod
-    def _extract_inner_band(mask: np.ndarray) -> np.ndarray:
+    def _extract_analysis_band(mask: np.ndarray) -> np.ndarray:
         h = mask.shape[0]
-        if h <= 2:
+        if h <= 3:
             return mask
-        # Ignora parte superior/inferior para evitar borda da barra e textos.
-        y1 = max(0, int(h * 0.25))
-        y2 = min(h, int(h * 0.75))
+        # Evita texto central da barra e as bordas superior/inferior.
+        y1 = max(0, int(h * 0.55))
+        y2 = min(h, int(h * 0.90))
         if y2 <= y1:
             return mask
         return mask[y1:y2, :]
@@ -68,42 +68,50 @@ class BarReader:
         if mask.size == 0:
             return 0.0
 
-        inner = BarReader._extract_inner_band(mask)
-        if inner.size == 0:
+        band = BarReader._extract_analysis_band(mask)
+        if band.size == 0:
             return 0.0
 
-        # Remove pontos isolados e linhas finas.
-        kernel = np.ones((3, 3), dtype=np.uint8)
-        cleaned = cv2.morphologyEx(inner, cv2.MORPH_OPEN, kernel)
+        # Remove ruído isolado sem destruir o preenchimento horizontal da barra.
+        kernel = np.ones((2, 2), dtype=np.uint8)
+        cleaned = cv2.morphologyEx(band, cv2.MORPH_OPEN, kernel)
 
         mask_bin = (cleaned > 0).astype(np.uint8)
         col_ratio = mask_bin.mean(axis=0)
-        # Coluna ativa quando >= 50% das linhas internas tem a cor.
-        active_cols = col_ratio >= 0.50
+
+        # Suaviza resposta por coluna para reduzir serrilhado.
+        smooth_kernel = np.ones((5,), dtype=np.float32) / 5.0
+        col_ratio = np.convolve(col_ratio, smooth_kernel, mode="same")
+        active_cols = col_ratio >= 0.45
 
         if active_cols.size == 0 or not np.any(active_cols):
             return 0.0
 
-        # Suaviza pequenos buracos.
-        active_int = active_cols.astype(np.uint8)
-        close_kernel = np.ones((7,), dtype=np.uint8)
-        active_smoothed = np.convolve(active_int, close_kernel, mode="same") >= 4
+        # Inicia somente quando existe um pequeno trecho inicial consistente.
+        min_start_run = 4
+        w = len(active_cols)
+        stop_empty_run = max(10, int(w * 0.03))
 
-        # Mede preenchimento contínuo da esquerda para direita.
         filled_end = 0
-        gap = 0
-        gap_tolerance = 6
         started = False
+        active_run = 0
+        empty_run = 0
 
-        for idx, is_active in enumerate(active_smoothed):
+        for idx, is_active in enumerate(active_cols):
             if is_active:
-                started = True
-                gap = 0
-                filled_end = idx + 1
-            elif started:
-                gap += 1
-                if gap >= gap_tolerance:
-                    break
+                active_run += 1
+                empty_run = 0
+                if not started and active_run >= min_start_run:
+                    started = True
+                if started:
+                    filled_end = idx + 1
+            else:
+                active_run = 0
+                if started:
+                    empty_run += 1
+                    # Para quando encontra um bloco vazio longo (fim real da barra).
+                    if empty_run >= stop_empty_run:
+                        break
 
         total = int(mask.shape[1])
         if total <= 0:
