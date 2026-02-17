@@ -8,6 +8,7 @@ Aplicativo em Python para monitorar **HP/MP por imagem da tela** da janela do Ti
 
 - Windows 10/11
 - Python 3.11+
+- Tesseract OCR instalado no sistema
 
 ## Instalação
 
@@ -22,6 +23,29 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+
+
+## Modo recomendado: leitura por texto (OCR)
+
+Agora o app suporta `read_mode: "ocr_text"` no `config.json`, lendo os números exibidos no cliente:
+
+- HP: `VIDA_ATUAL/VIDA_MAX` (ex.: `6896/6896`)
+- MP: `MANA_ATUAL/MANA_MAX` (ex.: `675/2427`)
+
+Configurar no `config.json`:
+
+- `read_mode`: `ocr_text`
+- `hp_text_roi`: ROI do texto de HP no topo
+- `mp_text_roi`: ROI do texto de MP no topo
+- `ocr.tesseract_cmd`: caminho do `tesseract.exe` (opcional, se não estiver no PATH)
+
+Exemplo de caminho comum no Windows:
+
+```
+C:\Program Files\Tesseract-OCR\tesseract.exe
+```
+
+Se OCR falhar em um frame, o app usa fallback da leitura por barra automaticamente.
 
 ## Fluxo de uso
 
