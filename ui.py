@@ -18,7 +18,6 @@ from tkinter import messagebox, ttk
 import winsound
 
 from bar_reader import BarReader, ROI
-from ocr_reader import OCRBarReader
 from recorder import WindowRecorder
 from rules_engine import Rule, RulesEngine
 from window_capture import TibiaWindowCapture
@@ -81,8 +80,6 @@ class TibiaHPMonitorApp:
 
         self.capture = TibiaWindowCapture(self.config.get("window_title_prefix", "Tibia - "))
         self.reader = BarReader()
-        ocr_cfg = self.config.get("ocr", {})
-        self.ocr_reader = OCRBarReader(tesseract_cmd=ocr_cfg.get("tesseract_cmd"))
         self.logger = self._build_logger(self.config["alerts"].get("log_file", "monitor.log"))
         recording_cfg = self.config.get("recording", {})
         self.recorder = WindowRecorder(output_dir=recording_cfg.get("output_dir", "recordings"))
@@ -241,24 +238,16 @@ class TibiaHPMonitorApp:
         return ROI(x=parts[0], y=parts[1], w=parts[2], h=parts[3])
 
     def _sync_roi_texts(self) -> None:
-        read_mode = self.config.get("read_mode", "ocr_text")
-        hp_key = "hp_text_roi" if read_mode == "ocr_text" else "hp_bar_roi"
-        mp_key = "mp_text_roi" if read_mode == "ocr_text" else "mp_bar_roi"
-        hp = self.config[hp_key]
-        mp = self.config[mp_key]
+        hp = self.config["hp_bar_roi"]
+        mp = self.config["mp_bar_roi"]
         self.hp_roi_str.set(f"{hp['x']},{hp['y']},{hp['w']},{hp['h']}")
         self.mp_roi_str.set(f"{mp['x']},{mp['y']},{mp['w']},{mp['h']}")
 
     def _sync_rois_from_manual_entries(self) -> None:
         hp = self._parse_roi_text(self.hp_roi_str.get())
         mp = self._parse_roi_text(self.mp_roi_str.get())
-        read_mode = self.config.get("read_mode", "ocr_text")
-        if read_mode == "ocr_text":
-            self.config["hp_text_roi"] = asdict(hp)
-            self.config["mp_text_roi"] = asdict(mp)
-        else:
-            self.config["hp_bar_roi"] = asdict(hp)
-            self.config["mp_bar_roi"] = asdict(mp)
+        self.config["hp_bar_roi"] = asdict(hp)
+        self.config["mp_bar_roi"] = asdict(mp)
 
     def _play_sound(self) -> None:
         if self.config.get("alerts", {}).get("sound_enabled", True):
@@ -316,11 +305,6 @@ class TibiaHPMonitorApp:
             messagebox.showerror("ROI", f"ROI inválida: {exc}")
             return
 
-        if self.config.get("read_mode", "ocr_text") == "ocr_text" and not self.ocr_reader.available:
-            messagebox.showwarning(
-                "OCR",
-                "pytesseract/tesseract não disponível. Instale o Tesseract OCR no Windows e o pacote pytesseract.",
-            )
 
         rules = []
         for item in self.config.get("rules", []):
@@ -363,11 +347,8 @@ class TibiaHPMonitorApp:
             fps_target = max(1, int(self.config.get("fps", 15)))
             frame_interval = 1.0 / fps_target
 
-            read_mode = self.config.get("read_mode", "ocr_text")
             hp_roi = ROI(**self.config["hp_bar_roi"])
             mp_roi = ROI(**self.config["mp_bar_roi"])
-            hp_text_roi = ROI(**self.config.get("hp_text_roi", self.config["hp_bar_roi"]))
-            mp_text_roi = ROI(**self.config.get("mp_text_roi", self.config["mp_bar_roi"]))
 
             hp_low = tuple(self.config["hp_hsv_lower"])
             hp_up = tuple(self.config["hp_hsv_upper"])
@@ -403,49 +384,23 @@ class TibiaHPMonitorApp:
                     self.recorder.write(frame)
 
                 try:
-                    if read_mode == "ocr_text":
-                        hp_pair = self.ocr_reader.read_pair(frame, hp_text_roi.x, hp_text_roi.y, hp_text_roi.w, hp_text_roi.h)
-                        mp_pair = self.ocr_reader.read_pair(frame, mp_text_roi.x, mp_text_roi.y, mp_text_roi.w, mp_text_roi.h)
-                        if hp_pair and mp_pair:
-                            hp = hp_pair.percent
-                            mp = mp_pair.percent
-                        else:
-                            # fallback automático para barra se OCR falhar
-                            hp, mp = self.reader.read_hp_mp(
-                                frame,
-                                hp_roi,
-                                mp_roi,
-                                hp_low,
-                                hp_up,
-                                mp_low,
-                                mp_up,
-                                hp_low2,
-                                hp_up2,
-                                mp_low2,
-                                mp_up2,
-                                hp_low3,
-                                hp_up3,
-                                mp_low3,
-                                mp_up3,
-                            )
-                    else:
-                        hp, mp = self.reader.read_hp_mp(
-                            frame,
-                            hp_roi,
-                            mp_roi,
-                            hp_low,
-                            hp_up,
-                            mp_low,
-                            mp_up,
-                            hp_low2,
-                            hp_up2,
-                            mp_low2,
-                            mp_up2,
-                            hp_low3,
-                            hp_up3,
-                            mp_low3,
-                            mp_up3,
-                        )
+                    hp, mp = self.reader.read_hp_mp(
+                        frame,
+                        hp_roi,
+                        mp_roi,
+                        hp_low,
+                        hp_up,
+                        mp_low,
+                        mp_up,
+                        hp_low2,
+                        hp_up2,
+                        mp_low2,
+                        mp_up2,
+                        hp_low3,
+                        hp_up3,
+                        mp_low3,
+                        mp_up3,
+                    )
                 except Exception as exc:
                     self.logger.error("Erro na leitura de barras: %s", exc)
                     self.root.after(0, lambda e=exc: self.status_value.set(f"Erro ROI: {e}"))

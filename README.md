@@ -8,7 +8,6 @@ Aplicativo em Python para monitorar **HP/MP por imagem da tela** da janela do Ti
 
 - Windows 10/11
 - Python 3.11+
-- Tesseract OCR instalado no sistema
 
 ## Instalação
 
@@ -25,39 +24,8 @@ python main.py
 ```
 
 
-## Modo recomendado: leitura por texto (OCR)
+> Leitura de HP/MP está configurada para **análise por barras (HSV)**; não depende de Tesseract/OCR.
 
-Agora o app suporta `read_mode: "ocr_text"` no `config.json`, lendo os números exibidos no cliente:
-
-- HP: `VIDA_ATUAL/VIDA_MAX` (ex.: `6896/6896`)
-- MP: `MANA_ATUAL/MANA_MAX` (ex.: `675/2427`)
-
-Configurar no `config.json`:
-
-- `read_mode`: `ocr_text`
-- `hp_text_roi`: ROI do texto de HP no topo
-- `mp_text_roi`: ROI do texto de MP no topo
-- `ocr.tesseract_cmd`: caminho do `tesseract.exe` (opcional, se não estiver no PATH)
-
-Exemplo de caminho comum no Windows:
-
-```
-C:\Program Files\Tesseract-OCR\tesseract.exe
-```
-
-Se OCR falhar em um frame, o app usa fallback da leitura por barra automaticamente.
-
-
-## Captura em stream contínuo e gravação (sem Xbox/OBS)
-
-O app já trabalha com captura contínua da janela (stream de frames) e agora também permite gravar vídeo MP4 da janela do Tibia pelos botões:
-
-- **Iniciar Gravação**
-- **Parar Gravação**
-
-Os vídeos são salvos em `recordings/` (configurável em `config.json` -> `recording.output_dir`).
-
-> Observação: integração direta com Xbox Game Bar ou OBS não é necessária para detecção. A detecção em tempo real usa o stream interno da janela para manter baixa latência.
 
 ## Fluxo de uso
 

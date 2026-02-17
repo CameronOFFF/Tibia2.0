@@ -4,4 +4,3 @@ mss
 pywin32
 pydantic
 Pillow
-pytesseract

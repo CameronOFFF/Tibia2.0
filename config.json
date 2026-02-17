@@ -120,22 +120,7 @@
     255,
     255
   ],
-  "read_mode": "ocr_text",
-  "hp_text_roi": {
-    "x": 320,
-    "y": 34,
-    "w": 180,
-    "h": 24
-  },
-  "mp_text_roi": {
-    "x": 820,
-    "y": 34,
-    "w": 180,
-    "h": 24
-  },
-  "ocr": {
-    "tesseract_cmd": ""
-  },
+  "read_mode": "bar_hsv",
   "recording": {
     "enabled": false,
     "output_dir": "recordings"
