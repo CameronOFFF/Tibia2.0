@@ -1,14 +1,48 @@
 {
   "fps": 15,
   "window_title_prefix": "Tibia - ",
-  "hp_bar_roi": {"x": 258, "y": 48, "w": 430, "h": 10},
-  "mp_bar_roi": {"x": 700, "y": 48, "w": 430, "h": 10},
-  "hp_hsv_lower": [0, 120, 70],
-  "hp_hsv_upper": [10, 255, 255],
-  "hp_hsv_lower2": [170, 120, 70],
-  "hp_hsv_upper2": [180, 255, 255],
-  "mp_hsv_lower": [95, 80, 70],
-  "mp_hsv_upper": [130, 255, 255],
+  "hp_bar_roi": {
+    "x": 258,
+    "y": 48,
+    "w": 430,
+    "h": 10
+  },
+  "mp_bar_roi": {
+    "x": 700,
+    "y": 48,
+    "w": 430,
+    "h": 10
+  },
+  "hp_hsv_lower": [
+    0,
+    120,
+    70
+  ],
+  "hp_hsv_upper": [
+    10,
+    255,
+    255
+  ],
+  "hp_hsv_lower2": [
+    170,
+    120,
+    70
+  ],
+  "hp_hsv_upper2": [
+    180,
+    255,
+    255
+  ],
+  "mp_hsv_lower": [
+    100,
+    120,
+    70
+  ],
+  "mp_hsv_upper": [
+    130,
+    255,
+    255
+  ],
   "smoothing": {
     "mode": "ema",
     "ema_alpha": 0.35,
@@ -75,5 +109,15 @@
       "cooldown_seconds": 2.0,
       "enabled": true
     }
+  ],
+  "hp_hsv_lower3": [
+    35,
+    60,
+    60
+  ],
+  "hp_hsv_upper3": [
+    90,
+    255,
+    255
   ]
 }

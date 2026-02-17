@@ -45,9 +45,12 @@ No `config.json` você pode ajustar as faixas de cor:
 
 - `hp_hsv_lower`, `hp_hsv_upper`
 - `hp_hsv_lower2`, `hp_hsv_upper2` (opcional, útil para vermelho que cruza o hue 0/180)
+- `hp_hsv_lower3`, `hp_hsv_upper3` (opcional, fallback adicional, ex.: verde)
 - `mp_hsv_lower`, `mp_hsv_upper`
 
 O `config.json` de exemplo já vem preparado para o layout com barra de HP **vermelha** e MP **azul** no topo da tela.
+
+Para leitura correta, deixe a ROI o mais justa possível na área interna da barra (evite bordas/metade de outros elementos), pois bordas coloridas podem causar falso 100%.
 
 Dica: se a % ficar instável, refine os ranges HSV e reduza ruído com:
 

@@ -318,6 +318,10 @@ class TibiaHPMonitorApp:
             hp_up2 = tuple(self.config["hp_hsv_upper2"]) if self.config.get("hp_hsv_upper2") else None
             mp_low2 = tuple(self.config["mp_hsv_lower2"]) if self.config.get("mp_hsv_lower2") else None
             mp_up2 = tuple(self.config["mp_hsv_upper2"]) if self.config.get("mp_hsv_upper2") else None
+            hp_low3 = tuple(self.config["hp_hsv_lower3"]) if self.config.get("hp_hsv_lower3") else None
+            hp_up3 = tuple(self.config["hp_hsv_upper3"]) if self.config.get("hp_hsv_upper3") else None
+            mp_low3 = tuple(self.config["mp_hsv_lower3"]) if self.config.get("mp_hsv_lower3") else None
+            mp_up3 = tuple(self.config["mp_hsv_upper3"]) if self.config.get("mp_hsv_upper3") else None
 
             while self.running:
                 start = time.time()
@@ -348,6 +352,10 @@ class TibiaHPMonitorApp:
                         hp_up2,
                         mp_low2,
                         mp_up2,
+                        hp_low3,
+                        hp_up3,
+                        mp_low3,
+                        mp_up3,
                     )
                 except Exception as exc:
                     self.logger.error("Erro na leitura de barras: %s", exc)
