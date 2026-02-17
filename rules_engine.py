@@ -81,14 +81,21 @@ class RulesEngine:
     def evaluate(self, hp: float, mp: float) -> List[Dict[str, str]]:
         fired: List[Dict[str, str]] = []
         now = time.time()
+        fired_keys_in_cycle = set()
         for rule in self.rules:
             if not rule.matches(hp, mp):
                 continue
             if not rule.ready(now):
                 continue
 
+            # Evita disparo duplicado da mesma tecla no mesmo ciclo (ex.: regra de HP e MP para mesma tecla).
+            key_cycle = rule.key.upper().strip()
+            if key_cycle in fired_keys_in_cycle:
+                continue
+
             sent_ok = self.send_key(rule.key)
             rule.last_triggered_at = now
+            fired_keys_in_cycle.add(key_cycle)
             self.play_sound()
 
             message = (

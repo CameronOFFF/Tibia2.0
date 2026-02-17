@@ -56,12 +56,50 @@ class BarReader:
         h = mask.shape[0]
         if h <= 3:
             return mask
-        # Faixa central da barra: evita bordas superior/inferior e texto no topo.
-        y1 = max(0, int(h * 0.30))
-        y2 = min(h, int(h * 0.85))
+        # Usa faixa central para evitar bordas/texto acima da barra.
+        y1 = max(0, int(h * 0.25))
+        y2 = min(h, int(h * 0.75))
         if y2 <= y1:
             return mask
         return mask[y1:y2, :]
+
+    @staticmethod
+    def _left_run_percent_per_row(bin_mask: np.ndarray) -> float:
+        h, w = bin_mask.shape
+        if h == 0 or w == 0:
+            return 0.0
+
+        runs = []
+        min_row_activity = max(3, int(w * 0.20))
+        gap_tolerance = max(3, int(w * 0.01))
+
+        for row in range(h):
+            line = bin_mask[row]
+            if int(np.sum(line)) < min_row_activity:
+                continue
+
+            filled = 0
+            gap = 0
+            started = False
+            for idx, val in enumerate(line):
+                if val:
+                    started = True
+                    gap = 0
+                    filled = idx + 1
+                elif started:
+                    gap += 1
+                    if gap >= gap_tolerance:
+                        break
+
+            if started:
+                runs.append(filled / w)
+
+        if not runs:
+            return 0.0
+
+        runs_arr = np.array(runs, dtype=np.float32)
+        # Usa quantil alto para priorizar linhas que realmente passam pela barra.
+        return float(np.percentile(runs_arr, 75))
 
     @staticmethod
     def _contiguous_fill_percent(mask: np.ndarray) -> float:
@@ -72,63 +110,13 @@ class BarReader:
         if band.size == 0:
             return 0.0
 
-        h, w = band.shape[:2]
-        if w <= 0:
-            return 0.0
-
-        # Limpeza para reduzir ruídos finos e pequenos buracos.
-        opened = cv2.morphologyEx(band, cv2.MORPH_OPEN, np.ones((2, 2), dtype=np.uint8))
-        cleaned = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, np.ones((3, 3), dtype=np.uint8))
+        # Fecha pequenos buracos e remove ruído pontual.
+        cleaned = cv2.morphologyEx(band, cv2.MORPH_CLOSE, np.ones((3, 3), dtype=np.uint8))
+        cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_OPEN, np.ones((2, 2), dtype=np.uint8))
         bin_mask = (cleaned > 0).astype(np.uint8)
 
-        # Estratégia principal: componente conectado que encosta na esquerda.
-        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(bin_mask, connectivity=8)
-        best_end = 0
-        min_comp_h = max(2, int(h * 0.35))
-        min_area = max(8, int(h * w * 0.005))
-        left_tolerance = 3
-
-        for i in range(1, num_labels):
-            x = int(stats[i, cv2.CC_STAT_LEFT])
-            y = int(stats[i, cv2.CC_STAT_TOP])
-            cw = int(stats[i, cv2.CC_STAT_WIDTH])
-            ch = int(stats[i, cv2.CC_STAT_HEIGHT])
-            area = int(stats[i, cv2.CC_STAT_AREA])
-            if area < min_area:
-                continue
-            if ch < min_comp_h:
-                continue
-            if x > left_tolerance:
-                continue
-            end = x + cw
-            if end > best_end:
-                best_end = end
-
-        if best_end > 0:
-            return max(0.0, min(100.0, (best_end / w) * 100.0))
-
-        # Fallback: leitura por colunas contínuas começando da esquerda.
-        col_ratio = bin_mask.mean(axis=0)
-        active = col_ratio >= 0.60
-        if active.size == 0 or not np.any(active):
-            return 0.0
-
-        filled_end = 0
-        empty_run = 0
-        stop_empty_run = max(8, int(w * 0.03))
-        started = False
-
-        for idx, is_active in enumerate(active):
-            if is_active:
-                started = True
-                empty_run = 0
-                filled_end = idx + 1
-            elif started:
-                empty_run += 1
-                if empty_run >= stop_empty_run:
-                    break
-
-        return max(0.0, min(100.0, (filled_end / w) * 100.0))
+        ratio = BarReader._left_run_percent_per_row(bin_mask)
+        return max(0.0, min(100.0, ratio * 100.0))
 
     @staticmethod
     def _mask_for_ranges(
