@@ -56,9 +56,9 @@ class BarReader:
         h = mask.shape[0]
         if h <= 3:
             return mask
-        # Evita texto central da barra e as bordas superior/inferior.
-        y1 = max(0, int(h * 0.55))
-        y2 = min(h, int(h * 0.90))
+        # Faixa central da barra: evita bordas superior/inferior e texto no topo.
+        y1 = max(0, int(h * 0.30))
+        y2 = min(h, int(h * 0.85))
         if y2 <= y1:
             return mask
         return mask[y1:y2, :]
@@ -72,51 +72,63 @@ class BarReader:
         if band.size == 0:
             return 0.0
 
-        # Remove ruído isolado sem destruir o preenchimento horizontal da barra.
-        kernel = np.ones((2, 2), dtype=np.uint8)
-        cleaned = cv2.morphologyEx(band, cv2.MORPH_OPEN, kernel)
-
-        mask_bin = (cleaned > 0).astype(np.uint8)
-        col_ratio = mask_bin.mean(axis=0)
-
-        # Suaviza resposta por coluna para reduzir serrilhado.
-        smooth_kernel = np.ones((5,), dtype=np.float32) / 5.0
-        col_ratio = np.convolve(col_ratio, smooth_kernel, mode="same")
-        active_cols = col_ratio >= 0.45
-
-        if active_cols.size == 0 or not np.any(active_cols):
+        h, w = band.shape[:2]
+        if w <= 0:
             return 0.0
 
-        # Inicia somente quando existe um pequeno trecho inicial consistente.
-        min_start_run = 4
-        w = len(active_cols)
-        stop_empty_run = max(10, int(w * 0.03))
+        # Limpeza para reduzir ruídos finos e pequenos buracos.
+        opened = cv2.morphologyEx(band, cv2.MORPH_OPEN, np.ones((2, 2), dtype=np.uint8))
+        cleaned = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, np.ones((3, 3), dtype=np.uint8))
+        bin_mask = (cleaned > 0).astype(np.uint8)
+
+        # Estratégia principal: componente conectado que encosta na esquerda.
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(bin_mask, connectivity=8)
+        best_end = 0
+        min_comp_h = max(2, int(h * 0.35))
+        min_area = max(8, int(h * w * 0.005))
+        left_tolerance = 3
+
+        for i in range(1, num_labels):
+            x = int(stats[i, cv2.CC_STAT_LEFT])
+            y = int(stats[i, cv2.CC_STAT_TOP])
+            cw = int(stats[i, cv2.CC_STAT_WIDTH])
+            ch = int(stats[i, cv2.CC_STAT_HEIGHT])
+            area = int(stats[i, cv2.CC_STAT_AREA])
+            if area < min_area:
+                continue
+            if ch < min_comp_h:
+                continue
+            if x > left_tolerance:
+                continue
+            end = x + cw
+            if end > best_end:
+                best_end = end
+
+        if best_end > 0:
+            return max(0.0, min(100.0, (best_end / w) * 100.0))
+
+        # Fallback: leitura por colunas contínuas começando da esquerda.
+        col_ratio = bin_mask.mean(axis=0)
+        active = col_ratio >= 0.60
+        if active.size == 0 or not np.any(active):
+            return 0.0
 
         filled_end = 0
-        started = False
-        active_run = 0
         empty_run = 0
+        stop_empty_run = max(8, int(w * 0.03))
+        started = False
 
-        for idx, is_active in enumerate(active_cols):
+        for idx, is_active in enumerate(active):
             if is_active:
-                active_run += 1
+                started = True
                 empty_run = 0
-                if not started and active_run >= min_start_run:
-                    started = True
-                if started:
-                    filled_end = idx + 1
-            else:
-                active_run = 0
-                if started:
-                    empty_run += 1
-                    # Para quando encontra um bloco vazio longo (fim real da barra).
-                    if empty_run >= stop_empty_run:
-                        break
+                filled_end = idx + 1
+            elif started:
+                empty_run += 1
+                if empty_run >= stop_empty_run:
+                    break
 
-        total = int(mask.shape[1])
-        if total <= 0:
-            return 0.0
-        return max(0.0, min(100.0, (filled_end / total) * 100.0))
+        return max(0.0, min(100.0, (filled_end / w) * 100.0))
 
     @staticmethod
     def _mask_for_ranges(
