@@ -44,7 +44,10 @@ As coordenadas são **relativas ao canto superior esquerdo da janela do Tibia**.
 No `config.json` você pode ajustar as faixas de cor:
 
 - `hp_hsv_lower`, `hp_hsv_upper`
+- `hp_hsv_lower2`, `hp_hsv_upper2` (opcional, útil para vermelho que cruza o hue 0/180)
 - `mp_hsv_lower`, `mp_hsv_upper`
+
+O `config.json` de exemplo já vem preparado para o layout com barra de HP **vermelha** e MP **azul** no topo da tela.
 
 Dica: se a % ficar instável, refine os ranges HSV e reduza ruído com:
 

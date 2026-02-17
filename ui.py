@@ -302,59 +302,80 @@ class TibiaHPMonitorApp:
             self.history_label.configure(text=txt)
 
     def _monitor_loop(self) -> None:
-        fps_target = max(1, int(self.config.get("fps", 15)))
-        frame_interval = 1.0 / fps_target
+        try:
+            fps_target = max(1, int(self.config.get("fps", 15)))
+            frame_interval = 1.0 / fps_target
 
-        hp_roi = ROI(**self.config["hp_bar_roi"])
-        mp_roi = ROI(**self.config["mp_bar_roi"])
+            hp_roi = ROI(**self.config["hp_bar_roi"])
+            mp_roi = ROI(**self.config["mp_bar_roi"])
 
-        hp_low = tuple(self.config["hp_hsv_lower"])
-        hp_up = tuple(self.config["hp_hsv_upper"])
-        mp_low = tuple(self.config["mp_hsv_lower"])
-        mp_up = tuple(self.config["mp_hsv_upper"])
+            hp_low = tuple(self.config["hp_hsv_lower"])
+            hp_up = tuple(self.config["hp_hsv_upper"])
+            mp_low = tuple(self.config["mp_hsv_lower"])
+            mp_up = tuple(self.config["mp_hsv_upper"])
 
-        while self.running:
-            start = time.time()
-            if not self.selected_hwnd:
-                break
+            hp_low2 = tuple(self.config["hp_hsv_lower2"]) if self.config.get("hp_hsv_lower2") else None
+            hp_up2 = tuple(self.config["hp_hsv_upper2"]) if self.config.get("hp_hsv_upper2") else None
+            mp_low2 = tuple(self.config["mp_hsv_lower2"]) if self.config.get("mp_hsv_lower2") else None
+            mp_up2 = tuple(self.config["mp_hsv_upper2"]) if self.config.get("mp_hsv_upper2") else None
 
-            if self.capture.is_minimized(self.selected_hwnd):
-                self.root.after(0, lambda: self.status_value.set("Janela minimizada (pausado)"))
-                time.sleep(0.3)
-                continue
+            while self.running:
+                start = time.time()
+                if not self.selected_hwnd:
+                    break
 
-            frame = self.capture.grab_window_frame(self.selected_hwnd)
-            if frame is None:
-                self.root.after(0, lambda: self.status_value.set("Falha ao capturar janela"))
-                time.sleep(0.15)
-                continue
+                if self.capture.is_minimized(self.selected_hwnd):
+                    self.root.after(0, lambda: self.status_value.set("Janela minimizada (pausado)"))
+                    time.sleep(0.3)
+                    continue
 
-            try:
-                hp, mp = self.reader.read_hp_mp(frame, hp_roi, mp_roi, hp_low, hp_up, mp_low, mp_up)
-            except Exception as exc:
-                self.logger.error("Erro na leitura de barras: %s", exc)
-                self.root.after(0, lambda e=exc: self.status_value.set(f"Erro ROI: {e}"))
-                time.sleep(0.3)
-                continue
+                frame = self.capture.grab_window_frame(self.selected_hwnd)
+                if frame is None:
+                    self.root.after(0, lambda: self.status_value.set("Falha ao capturar janela"))
+                    time.sleep(0.15)
+                    continue
 
-            fired = self.rules_engine.evaluate(hp, mp)
-            toast = fired[0]["message"] if fired else ""
+                try:
+                    hp, mp = self.reader.read_hp_mp(
+                        frame,
+                        hp_roi,
+                        mp_roi,
+                        hp_low,
+                        hp_up,
+                        mp_low,
+                        mp_up,
+                        hp_low2,
+                        hp_up2,
+                        mp_low2,
+                        mp_up2,
+                    )
+                except Exception as exc:
+                    self.logger.error("Erro na leitura de barras: %s", exc)
+                    self.root.after(0, lambda e=exc: self.status_value.set(f"Erro ROI: {e}"))
+                    time.sleep(0.3)
+                    continue
 
-            self.frame_timestamps.append(time.time())
-            fps_now = 0.0
-            if len(self.frame_timestamps) >= 2:
-                span = self.frame_timestamps[-1] - self.frame_timestamps[0]
-                fps_now = (len(self.frame_timestamps) - 1) / span if span > 0 else 0.0
+                fired = self.rules_engine.evaluate(hp, mp)
+                toast = fired[0]["message"] if fired else ""
 
-            self.root.after(0, self._update_ui_metrics, hp, mp, fps_now, toast)
-            self._update_history(hp, mp)
+                self.frame_timestamps.append(time.time())
+                fps_now = 0.0
+                if len(self.frame_timestamps) >= 2:
+                    span = self.frame_timestamps[-1] - self.frame_timestamps[0]
+                    fps_now = (len(self.frame_timestamps) - 1) / span if span > 0 else 0.0
 
-            elapsed = time.time() - start
-            to_sleep = frame_interval - elapsed
-            if to_sleep > 0:
-                time.sleep(to_sleep)
+                self.root.after(0, self._update_ui_metrics, hp, mp, fps_now, toast)
+                self._update_history(hp, mp)
 
-        self.running = False
+                elapsed = time.time() - start
+                to_sleep = frame_interval - elapsed
+                if to_sleep > 0:
+                    time.sleep(to_sleep)
+        except Exception:
+            self.logger.exception("Erro fatal no loop de monitoramento")
+            self.root.after(0, lambda: self.status_value.set("Erro no monitoramento (ver logs)"))
+        finally:
+            self.running = False
 
     def _update_ui_metrics(self, hp: float, mp: float, fps_now: float, toast: str) -> None:
         self.hp_value.set(hp)

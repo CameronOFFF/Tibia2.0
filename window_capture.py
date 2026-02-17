@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import threading
 from typing import Dict, List, Optional
 
 import cv2
@@ -19,7 +20,15 @@ class WindowInfo:
 class TibiaWindowCapture:
     def __init__(self, title_prefix: str = "Tibia - ") -> None:
         self.title_prefix = title_prefix
-        self._sct = mss.mss()
+        self._thread_local = threading.local()
+
+    def _get_sct(self) -> mss.mss:
+        """mss usa handles thread-local no Windows, então cada thread precisa da sua instância."""
+        sct = getattr(self._thread_local, "sct", None)
+        if sct is None:
+            sct = mss.mss()
+            self._thread_local.sct = sct
+        return sct
 
     def list_windows(self) -> List[WindowInfo]:
         windows: List[WindowInfo] = []
@@ -60,6 +69,6 @@ class TibiaWindowCapture:
             "height": bottom - top,
         }
 
-        raw = np.array(self._sct.grab(monitor), dtype=np.uint8)
+        raw = np.array(self._get_sct().grab(monitor), dtype=np.uint8)
         frame = cv2.cvtColor(raw, cv2.COLOR_BGRA2BGR)
         return frame
