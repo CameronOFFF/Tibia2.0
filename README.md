@@ -73,6 +73,18 @@ Cada regra possui:
 - `cooldown_seconds`: intervalo mínimo entre disparos da mesma regra
 - `enabled`: ativa/desativa
 
+
+## Painel de Features (baseado na matriz do PyTibia)
+
+Foi adicionada uma seção **Features (base PyTibia)** com lista das funcionalidades e status (✓/✗), incluindo:
+
+- Auto amulet, Auto ring, Cavebot, Combo Spells, Drop flasks
+- Deposit gold, Deposit non stacked items, Deposit stacked items
+- Food eater, Healing, Smart Targeting, Refill, Quick loot
+- além de itens roadmap (Alerts, Auto login, Fish, Sell items etc.)
+
+As features marcadas como implementadas podem ser editadas (tecla/intervalo) e executadas de forma temporizada.
+
 ## Logs e alertas
 
 - Log em console e arquivo (`alerts.log_file` no config).

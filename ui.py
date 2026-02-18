@@ -18,6 +18,7 @@ from tkinter import messagebox, ttk
 import winsound
 
 from bar_reader import BarReader, ROI
+from features_engine import FeaturesEngine
 from recorder import WindowRecorder
 from rules_engine import Rule, RulesEngine
 from window_capture import TibiaWindowCapture
@@ -92,6 +93,8 @@ class TibiaHPMonitorApp:
         )
 
         self.rules_engine = RulesEngine(self.logger, self._play_sound)
+        self.features_engine = FeaturesEngine()
+        self.features_engine.set_features(self.config.get("features", []))
         self.selected_hwnd: Optional[int] = None
         self.running = False
         self.worker_thread: Optional[threading.Thread] = None
@@ -111,6 +114,7 @@ class TibiaHPMonitorApp:
 
         self._build_ui()
         self._load_rules_to_tree()
+        self._load_features_to_tree()
         self.refresh_windows()
         self._sync_roi_texts()
 
@@ -137,6 +141,7 @@ class TibiaHPMonitorApp:
 
     def save_config(self) -> None:
         self._sync_rois_from_manual_entries()
+        self.config["features"] = self.features_engine.to_config()
         with self.config_path.open("w", encoding="utf-8") as fh:
             json.dump(self.config, fh, ensure_ascii=False, indent=2)
         self.logger.info("Configuração salva em %s", self.config_path)
@@ -222,6 +227,29 @@ class TibiaHPMonitorApp:
         ttk.Button(buttons, text="Adicionar", command=self.add_rule).pack(side="left")
         ttk.Button(buttons, text="Editar", command=self.edit_rule).pack(side="left", padx=6)
         ttk.Button(buttons, text="Remover", command=self.remove_rule).pack(side="left")
+
+        features_frame = ttk.LabelFrame(self.root, text="Features (base PyTibia)", padding=8)
+        features_frame.pack(fill="x", padx=8, pady=4)
+        self.features_tree = ttk.Treeview(
+            features_frame,
+            columns=("name", "done", "enabled", "key", "interval"),
+            show="headings",
+            height=7,
+        )
+        for col, width in [
+            ("name", 260),
+            ("done", 80),
+            ("enabled", 90),
+            ("key", 90),
+            ("interval", 110),
+        ]:
+            self.features_tree.heading(col, text=col)
+            self.features_tree.column(col, width=width)
+        self.features_tree.pack(fill="x", expand=True)
+
+        feat_btns = ttk.Frame(features_frame)
+        feat_btns.pack(fill="x", pady=6)
+        ttk.Button(feat_btns, text="Editar Feature", command=self.edit_feature).pack(side="left")
 
     def refresh_windows(self) -> None:
         wins = self.capture.list_windows()
@@ -408,7 +436,15 @@ class TibiaHPMonitorApp:
                     continue
 
                 fired = self.rules_engine.evaluate(hp, mp)
-                toast = fired[0]["message"] if fired else ""
+                feature_fired = self.features_engine.evaluate()
+                for ff in feature_fired:
+                    self.logger.info(ff["message"])
+
+                toast = ""
+                if fired:
+                    toast = fired[0]["message"]
+                elif feature_fired:
+                    toast = feature_fired[0]["message"]
 
                 self.frame_timestamps.append(time.time())
                 fps_now = 0.0
@@ -481,6 +517,23 @@ class TibiaHPMonitorApp:
                 ),
             )
 
+    def _load_features_to_tree(self) -> None:
+        for row in self.features_tree.get_children():
+            self.features_tree.delete(row)
+        for idx, feature in enumerate(self.features_engine.features):
+            self.features_tree.insert(
+                "",
+                "end",
+                iid=f"feat_{idx}",
+                values=(
+                    feature.name,
+                    "✓" if feature.done else "✗",
+                    feature.enabled,
+                    feature.key,
+                    feature.interval_seconds,
+                ),
+            )
+
     def add_rule(self) -> None:
         self._rule_editor()
 
@@ -499,6 +552,44 @@ class TibiaHPMonitorApp:
         index = int(selected[0])
         self.config["rules"].pop(index)
         self._load_rules_to_tree()
+
+    def edit_feature(self) -> None:
+        selected = self.features_tree.selection()
+        if not selected:
+            messagebox.showwarning("Features", "Selecione uma feature para editar.")
+            return
+        index = int(selected[0].replace("feat_", ""))
+        feature = self.features_engine.features[index]
+
+        editor = tk.Toplevel(self.root)
+        editor.title("Editar Feature")
+        editor.geometry("380x220")
+
+        ttk.Label(editor, text=f"Feature: {feature.name}").grid(row=0, column=0, columnspan=2, sticky="w", padx=8, pady=8)
+        ttk.Label(editor, text=f"Implementada: {'Sim' if feature.done else 'Não'}").grid(row=1, column=0, columnspan=2, sticky="w", padx=8)
+
+        enabled_var = tk.BooleanVar(value=feature.enabled)
+        key_var = tk.StringVar(value=feature.key)
+        interval_var = tk.StringVar(value=str(feature.interval_seconds))
+
+        ttk.Checkbutton(editor, text="Ativa", variable=enabled_var).grid(row=2, column=0, sticky="w", padx=8, pady=8)
+        ttk.Label(editor, text="Tecla").grid(row=3, column=0, sticky="w", padx=8)
+        ttk.Entry(editor, textvariable=key_var, width=12).grid(row=3, column=1, sticky="w")
+        ttk.Label(editor, text="Intervalo (s)").grid(row=4, column=0, sticky="w", padx=8, pady=6)
+        ttk.Entry(editor, textvariable=interval_var, width=12).grid(row=4, column=1, sticky="w")
+
+        def save_feature() -> None:
+            try:
+                feature.enabled = bool(enabled_var.get()) and feature.done
+                feature.key = key_var.get().upper().strip()
+                feature.interval_seconds = float(interval_var.get())
+            except Exception as exc:
+                messagebox.showerror("Feature", str(exc))
+                return
+            self._load_features_to_tree()
+            editor.destroy()
+
+        ttk.Button(editor, text="Salvar", command=save_feature).grid(row=5, column=1, sticky="e", padx=8, pady=10)
 
     def _rule_editor(self, index: Optional[int] = None) -> None:
         editor = tk.Toplevel(self.root)

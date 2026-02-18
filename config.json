@@ -124,5 +124,147 @@
   "recording": {
     "enabled": false,
     "output_dir": "recordings"
-  }
+  },
+  "features": [
+    {
+      "name": "Alerts",
+      "done": false,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 5
+    },
+    {
+      "name": "Auto amulet",
+      "done": true,
+      "enabled": false,
+      "key": "F7",
+      "interval_seconds": 1.0
+    },
+    {
+      "name": "Auto login",
+      "done": false,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 5
+    },
+    {
+      "name": "Auto ring",
+      "done": true,
+      "enabled": false,
+      "key": "F8",
+      "interval_seconds": 1.0
+    },
+    {
+      "name": "Auto server save",
+      "done": false,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 5
+    },
+    {
+      "name": "Cavebot",
+      "done": true,
+      "enabled": false,
+      "key": "F9",
+      "interval_seconds": 0.7
+    },
+    {
+      "name": "Combo Spells",
+      "done": true,
+      "enabled": false,
+      "key": "F10",
+      "interval_seconds": 1.2
+    },
+    {
+      "name": "Drop flasks",
+      "done": true,
+      "enabled": false,
+      "key": "F11",
+      "interval_seconds": 2.5
+    },
+    {
+      "name": "Deposit gold",
+      "done": true,
+      "enabled": false,
+      "key": "F12",
+      "interval_seconds": 2.5
+    },
+    {
+      "name": "Deposit non stacked items",
+      "done": true,
+      "enabled": false,
+      "key": "1",
+      "interval_seconds": 2.5
+    },
+    {
+      "name": "Deposit stacked items",
+      "done": true,
+      "enabled": false,
+      "key": "2",
+      "interval_seconds": 2.5
+    },
+    {
+      "name": "Fish",
+      "done": false,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 5
+    },
+    {
+      "name": "Food eater",
+      "done": true,
+      "enabled": false,
+      "key": "3",
+      "interval_seconds": 30
+    },
+    {
+      "name": "Healing",
+      "done": true,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 1
+    },
+    {
+      "name": "Smart Targeting",
+      "done": true,
+      "enabled": false,
+      "key": "4",
+      "interval_seconds": 0.8
+    },
+    {
+      "name": "Refill",
+      "done": true,
+      "enabled": false,
+      "key": "5",
+      "interval_seconds": 3
+    },
+    {
+      "name": "Quick loot",
+      "done": true,
+      "enabled": false,
+      "key": "R",
+      "interval_seconds": 0.8
+    },
+    {
+      "name": "Sell flasks",
+      "done": false,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 5
+    },
+    {
+      "name": "Sell items",
+      "done": false,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 5
+    },
+    {
+      "name": "Train",
+      "done": false,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 5
+    }
+  ]
 }
