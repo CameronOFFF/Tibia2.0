@@ -1,0 +1,25 @@
+{
+  "macros": [
+    {
+      "name": "heal",
+      "window_title_prefix": "Tibia - ",
+      "character_name": "NOME_PERSONAGEM",
+      "repeat": 0,
+      "interval_ms": 500,
+      "actions": [
+        {"key": "f1", "delay_ms": 100},
+        {"key": "f2", "delay_ms": 100}
+      ]
+    },
+    {
+      "name": "utani_hur",
+      "window_title_prefix": "Tibia - ",
+      "character_name": "NOME_PERSONAGEM",
+      "repeat": 10,
+      "interval_ms": 2500,
+      "actions": [
+        {"key": "f3", "delay_ms": 100}
+      ]
+    }
+  ]
+}
