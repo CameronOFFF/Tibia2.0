@@ -7,8 +7,8 @@
       "repeat": 0,
       "interval_ms": 500,
       "actions": [
-        {"key": "f1", "delay_ms": 100},
-        {"key": "f2", "delay_ms": 100}
+        {"key": "f1", "hold_ms": 0, "delay_ms": 100},
+        {"key": "f2", "hold_ms": 0, "delay_ms": 100}
       ]
     },
     {
@@ -18,8 +18,15 @@
       "repeat": 10,
       "interval_ms": 2500,
       "actions": [
-        {"key": "f3", "delay_ms": 100}
+        {"key": "f3", "hold_ms": 0, "delay_ms": 100}
       ]
     }
-  ]
+  ],
+  "potion_settings": {
+    "hp_threshold": 50,
+    "mana_threshold": 40,
+    "hp_key": "f4",
+    "mana_key": "f5",
+    "cooldown_ms": 300
+  }
 }
