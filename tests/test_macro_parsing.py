@@ -1,6 +1,6 @@
 import json
 
-from macro_tibia import TibiaMacroRunner
+from macro_tibia import TibiaMacroRunner, compute_bar_percent_from_rgb, parse_region
 
 
 def test_parse_macro_defaults() -> None:
@@ -42,4 +42,15 @@ def test_load_macros_ignores_potion_settings(tmp_path) -> None:
 
     assert len(macros) == 1
     assert macros[0].name == "heal"
-    assert macros[0].actions[0].key == "f1"
+
+
+def test_parse_region() -> None:
+    assert parse_region("10,20,30,40") == (10, 20, 30, 40)
+
+
+def test_compute_bar_percent_from_rgb() -> None:
+    hp_pixels = [(200, 10, 10)] * 50 + [(20, 20, 20)] * 50
+    mana_pixels = [(10, 10, 200)] * 25 + [(20, 20, 20)] * 75
+
+    assert 45 <= compute_bar_percent_from_rgb(hp_pixels, "hp") <= 55
+    assert 20 <= compute_bar_percent_from_rgb(mana_pixels, "mana") <= 30

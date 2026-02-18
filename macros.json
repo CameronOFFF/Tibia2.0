@@ -10,23 +10,15 @@
         {"key": "f1", "hold_ms": 0, "delay_ms": 100},
         {"key": "f2", "hold_ms": 0, "delay_ms": 100}
       ]
-    },
-    {
-      "name": "utani_hur",
-      "window_title_prefix": "Tibia - ",
-      "character_name": "NOME_PERSONAGEM",
-      "repeat": 10,
-      "interval_ms": 2500,
-      "actions": [
-        {"key": "f3", "hold_ms": 0, "delay_ms": 100}
-      ]
     }
   ],
   "potion_settings": {
-    "hp_threshold": 50,
-    "mana_threshold": 40,
+    "hp_threshold": 60,
+    "mana_threshold": 75,
     "hp_key": "f4",
     "mana_key": "f5",
-    "cooldown_ms": 300
+    "cooldown_ms": 300,
+    "hp_region": "168,41,111,8",
+    "mana_region": "168,53,111,8"
   }
 }

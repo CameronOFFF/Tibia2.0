@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-Macro de Tibia com detecção automática do client por título de janela.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -17,18 +13,18 @@ from typing import Any, Optional
 try:
     import tkinter as tk
     from tkinter import ttk
-except Exception:  # pragma: no cover - ambiente sem suporte GUI
+except Exception:  # pragma: no cover
     tk = None
     ttk = None
 
 try:
     import pyautogui
-except Exception:  # pragma: no cover - ambiente sem GUI/win32
+except Exception:  # pragma: no cover
     pyautogui = None
 
 try:
     import pygetwindow as gw
-except Exception:  # pragma: no cover - ambiente sem GUI/win32
+except Exception:  # pragma: no cover
     gw = None
 
 
@@ -60,6 +56,8 @@ class PotionSettings:
     hp_key: str = "f4"
     mana_key: str = "f5"
     cooldown_ms: int = 300
+    hp_region: str = ""  # x,y,w,h relativo à janela Tibia
+    mana_region: str = ""  # x,y,w,h relativo à janela Tibia
 
 
 class TibiaWindowError(RuntimeError):
@@ -77,45 +75,30 @@ class TibiaMacroRunner:
     @staticmethod
     def _load_json_config(path: Path) -> dict[str, Any]:
         if not path.exists():
-            raise FileNotFoundError(
-                f"Arquivo de configuração não encontrado: {path}. "
-                "Crie macros.json baseado no modelo informado no README.md"
-            )
+            raise FileNotFoundError(f"Arquivo de configuração não encontrado: {path}")
         with path.open("r", encoding="utf-8") as f:
             return json.load(f)
 
     @staticmethod
     def _get_windows() -> list[Any]:
         if gw is None:
-            raise TibiaWindowError(
-                "pygetwindow não está disponível. Instale dependências com `pip install -r requirements.txt`."
-            )
+            raise TibiaWindowError("pygetwindow não está disponível.")
         return gw.getAllWindows()
 
     def list_tibia_windows(self) -> list[str]:
-        titles = []
-        for window in self._get_windows():
-            title = (window.title or "").strip()
-            if title.startswith("Tibia - "):
-                titles.append(title)
-        return titles
+        return [(w.title or "").strip() for w in self._get_windows() if (w.title or "").strip().startswith("Tibia - ")]
 
     def find_tibia_window(self, title_prefix: str, character_name: Optional[str]) -> Any:
         candidates = []
         for window in self._get_windows():
             title = (window.title or "").strip()
-            if not title:
-                continue
-            if not title.startswith(title_prefix):
+            if not title or not title.startswith(title_prefix):
                 continue
             if character_name and title.lower() != f"{title_prefix}{character_name}".lower():
                 continue
             candidates.append(window)
-
         if not candidates:
-            filtro = f"{title_prefix}{character_name or '*'}"
-            raise TibiaWindowError(f"Nenhuma janela encontrada para o filtro: {filtro}")
-
+            raise TibiaWindowError(f"Nenhuma janela encontrada para {title_prefix}{character_name or '*'}")
         return candidates[0]
 
     def activate_window(self, window: Any) -> None:
@@ -131,14 +114,9 @@ class TibiaMacroRunner:
 
     def _send_key(self, key: str, hold_ms: int) -> None:
         if self.dry_run:
-            print(f"[DRY_RUN] tecla={key!r} hold_ms={hold_ms}")
             return
-
         if pyautogui is None:
-            raise TibiaWindowError(
-                "pyautogui não está disponível. Instale dependências com `pip install -r requirements.txt`."
-            )
-
+            raise TibiaWindowError("pyautogui não está disponível.")
         if hold_ms > 0:
             pyautogui.keyDown(key)
             time.sleep(hold_ms / 1000)
@@ -152,7 +130,6 @@ class TibiaMacroRunner:
 
         start = time.time()
         executed = 0
-
         while not self._stop_event.is_set():
             for action in macro.actions:
                 if self._stop_event.is_set():
@@ -183,12 +160,45 @@ class TibiaMacroRunner:
 
     def load_macros(self, path: Path = CONFIG_PATH) -> list[MacroConfig]:
         raw = self._load_json_config(path)
-        return [self.parse_macro(macro) for macro in raw.get("macros", [])]
+        return [self.parse_macro(m) for m in raw.get("macros", [])]
+
+
+def parse_region(region_text: str) -> Optional[tuple[int, int, int, int]]:
+    region_text = region_text.strip()
+    if not region_text:
+        return None
+    parts = [p.strip() for p in region_text.split(",")]
+    if len(parts) != 4:
+        raise ValueError("Região deve ter formato x,y,w,h")
+    x, y, w, h = [int(p) for p in parts]
+    if w <= 0 or h <= 0:
+        raise ValueError("w e h devem ser > 0")
+    return (x, y, w, h)
+
+
+def _is_red_pixel(r: int, g: int, b: int) -> bool:
+    return r >= 90 and r > g * 1.2 and r > b * 1.2
+
+
+def _is_blue_pixel(r: int, g: int, b: int) -> bool:
+    return b >= 90 and b > r * 1.2 and b > g * 1.15
+
+
+def compute_bar_percent_from_rgb(pixels: list[tuple[int, int, int]], kind: str) -> int:
+    if not pixels:
+        return 0
+    if kind not in {"hp", "mana"}:
+        raise ValueError("kind deve ser 'hp' ou 'mana'")
+
+    if kind == "hp":
+        colored = sum(1 for r, g, b in pixels if _is_red_pixel(r, g, b))
+    else:
+        colored = sum(1 for r, g, b in pixels if _is_blue_pixel(r, g, b))
+    pct = int((colored / len(pixels)) * 100)
+    return max(0, min(100, pct))
 
 
 class TibiaMacroApp:
-    """Interface única com todas as funções do macro em uma tela."""
-
     def __init__(self, config_path: Path):
         if tk is None or ttk is None:
             raise RuntimeError("Tkinter não está disponível nesta instalação do Python.")
@@ -205,7 +215,7 @@ class TibiaMacroApp:
 
         self.root = tk.Tk()
         self.root.title("Tibia Macro Control")
-        self.root.geometry("1024x760")
+        self.root.geometry("1100x800")
 
         self.selected_window = tk.StringVar(value="")
         self.selected_macro = tk.StringVar(value="")
@@ -221,11 +231,15 @@ class TibiaMacroApp:
 
         self.current_hp_pct = tk.StringVar(value="100")
         self.current_mana_pct = tk.StringVar(value="100")
+        self.detected_hp_pct = tk.StringVar(value="-")
+        self.detected_mana_pct = tk.StringVar(value="-")
         self.hp_threshold = tk.StringVar(value="50")
         self.mana_threshold = tk.StringVar(value="40")
         self.hp_key = tk.StringVar(value="f4")
         self.mana_key = tk.StringVar(value="f5")
         self.potion_cooldown_ms = tk.StringVar(value="300")
+        self.hp_region = tk.StringVar(value="")
+        self.mana_region = tk.StringVar(value="")
 
         self.window_combo: ttk.Combobox
         self.macro_combo: ttk.Combobox
@@ -255,63 +269,67 @@ class TibiaMacroApp:
         self.macro_combo.grid(row=0, column=0, padx=8, pady=8, sticky="ew")
         self.macro_combo.bind("<<ComboboxSelected>>", lambda _evt: self._load_selected_macro_editor())
         ttk.Button(frm_macro, text="Atualizar macros", command=self._refresh_macros).grid(row=0, column=1, padx=8, pady=8)
-        ttk.Checkbutton(frm_macro, text="Dry-run (não envia teclas)", variable=self.dry_run).grid(row=1, column=0, padx=8, pady=3, sticky="w")
-        ttk.Button(frm_macro, text="Rodar macro selecionado", command=self._run_selected).grid(row=1, column=1, padx=8, pady=3, sticky="ew")
-        ttk.Button(frm_macro, text="Rodar todos", command=self._run_all).grid(row=1, column=2, padx=8, pady=3, sticky="ew")
-        ttk.Button(frm_macro, text="Parar macro", command=self._stop_running).grid(row=1, column=3, padx=8, pady=3, sticky="ew")
+        ttk.Checkbutton(frm_macro, text="Dry-run", variable=self.dry_run).grid(row=1, column=0, padx=8, pady=3, sticky="w")
+        ttk.Button(frm_macro, text="Rodar selecionado", command=self._run_selected).grid(row=1, column=1, padx=8, pady=3)
+        ttk.Button(frm_macro, text="Rodar todos", command=self._run_all).grid(row=1, column=2, padx=8, pady=3)
+        ttk.Button(frm_macro, text="Parar", command=self._stop_running).grid(row=1, column=3, padx=8, pady=3)
 
-        frm_macro_edit = ttk.LabelFrame(root, text="3) Editar tecla do macro (e salvar)")
+        frm_macro_edit = ttk.LabelFrame(root, text="3) Editar tecla do macro")
         frm_macro_edit.grid(row=2, column=0, padx=10, pady=6, sticky="ew")
-        for idx in range(8):
-            frm_macro_edit.columnconfigure(idx, weight=1 if idx in (1, 3, 5, 7) else 0)
+        ttk.Label(frm_macro_edit, text="Tecla 1ª ação:").grid(row=0, column=0, padx=6, pady=6)
+        ttk.Entry(frm_macro_edit, textvariable=self.edit_key, width=12).grid(row=0, column=1, padx=6, pady=6)
+        ttk.Label(frm_macro_edit, text="hold_ms:").grid(row=0, column=2, padx=6, pady=6)
+        ttk.Entry(frm_macro_edit, textvariable=self.edit_hold_ms, width=8).grid(row=0, column=3, padx=6, pady=6)
+        ttk.Label(frm_macro_edit, text="delay_ms:").grid(row=0, column=4, padx=6, pady=6)
+        ttk.Entry(frm_macro_edit, textvariable=self.edit_delay_ms, width=8).grid(row=0, column=5, padx=6, pady=6)
+        ttk.Label(frm_macro_edit, text="repeat:").grid(row=1, column=0, padx=6, pady=6)
+        ttk.Entry(frm_macro_edit, textvariable=self.edit_repeat, width=8).grid(row=1, column=1, padx=6, pady=6)
+        ttk.Label(frm_macro_edit, text="interval_ms:").grid(row=1, column=2, padx=6, pady=6)
+        ttk.Entry(frm_macro_edit, textvariable=self.edit_interval_ms, width=8).grid(row=1, column=3, padx=6, pady=6)
+        ttk.Button(frm_macro_edit, text="Salvar macro", command=self._save_selected_macro).grid(row=1, column=6, padx=6, pady=6)
 
-        ttk.Label(frm_macro_edit, text="Tecla (1ª ação):").grid(row=0, column=0, padx=6, pady=6, sticky="e")
-        ttk.Entry(frm_macro_edit, textvariable=self.edit_key, width=10).grid(row=0, column=1, padx=6, pady=6, sticky="w")
-        ttk.Label(frm_macro_edit, text="Hold ms:").grid(row=0, column=2, padx=6, pady=6, sticky="e")
-        ttk.Entry(frm_macro_edit, textvariable=self.edit_hold_ms, width=8).grid(row=0, column=3, padx=6, pady=6, sticky="w")
-        ttk.Label(frm_macro_edit, text="Delay ms:").grid(row=0, column=4, padx=6, pady=6, sticky="e")
-        ttk.Entry(frm_macro_edit, textvariable=self.edit_delay_ms, width=8).grid(row=0, column=5, padx=6, pady=6, sticky="w")
-
-        ttk.Label(frm_macro_edit, text="Repeat:").grid(row=1, column=0, padx=6, pady=6, sticky="e")
-        ttk.Entry(frm_macro_edit, textvariable=self.edit_repeat, width=8).grid(row=1, column=1, padx=6, pady=6, sticky="w")
-        ttk.Label(frm_macro_edit, text="Interval ms:").grid(row=1, column=2, padx=6, pady=6, sticky="e")
-        ttk.Entry(frm_macro_edit, textvariable=self.edit_interval_ms, width=8).grid(row=1, column=3, padx=6, pady=6, sticky="w")
-        ttk.Button(frm_macro_edit, text="Salvar macro", command=self._save_selected_macro).grid(row=1, column=7, padx=6, pady=6, sticky="e")
-
-        frm_potion = ttk.LabelFrame(root, text="4) Potion por % de vida e mana")
+        frm_potion = ttk.LabelFrame(root, text="4) Potion por % de vida e mana (detecção automática)")
         frm_potion.grid(row=3, column=0, padx=10, pady=6, sticky="ew")
-        for idx in range(10):
-            frm_potion.columnconfigure(idx, weight=1 if idx in (1, 3, 5, 7, 9) else 0)
 
-        ttk.Label(frm_potion, text="Vida atual %:").grid(row=0, column=0, padx=6, pady=6, sticky="e")
-        ttk.Entry(frm_potion, textvariable=self.current_hp_pct, width=8).grid(row=0, column=1, padx=6, pady=6, sticky="w")
-        ttk.Label(frm_potion, text="Mana atual %:").grid(row=0, column=2, padx=6, pady=6, sticky="e")
-        ttk.Entry(frm_potion, textvariable=self.current_mana_pct, width=8).grid(row=0, column=3, padx=6, pady=6, sticky="w")
+        ttk.Label(frm_potion, text="Vida limite %:").grid(row=0, column=0, padx=6, pady=4)
+        ttk.Entry(frm_potion, textvariable=self.hp_threshold, width=8).grid(row=0, column=1, padx=6, pady=4)
+        ttk.Label(frm_potion, text="Tecla HP:").grid(row=0, column=2, padx=6, pady=4)
+        ttk.Entry(frm_potion, textvariable=self.hp_key, width=8).grid(row=0, column=3, padx=6, pady=4)
 
-        ttk.Label(frm_potion, text="Usar potion se vida <= %:").grid(row=1, column=0, padx=6, pady=6, sticky="e")
-        ttk.Entry(frm_potion, textvariable=self.hp_threshold, width=8).grid(row=1, column=1, padx=6, pady=6, sticky="w")
-        ttk.Label(frm_potion, text="Tecla hp potion:").grid(row=1, column=2, padx=6, pady=6, sticky="e")
-        ttk.Entry(frm_potion, textvariable=self.hp_key, width=8).grid(row=1, column=3, padx=6, pady=6, sticky="w")
+        ttk.Label(frm_potion, text="Mana limite %:").grid(row=0, column=4, padx=6, pady=4)
+        ttk.Entry(frm_potion, textvariable=self.mana_threshold, width=8).grid(row=0, column=5, padx=6, pady=4)
+        ttk.Label(frm_potion, text="Tecla Mana:").grid(row=0, column=6, padx=6, pady=4)
+        ttk.Entry(frm_potion, textvariable=self.mana_key, width=8).grid(row=0, column=7, padx=6, pady=4)
 
-        ttk.Label(frm_potion, text="Usar potion se mana <= %:").grid(row=1, column=4, padx=6, pady=6, sticky="e")
-        ttk.Entry(frm_potion, textvariable=self.mana_threshold, width=8).grid(row=1, column=5, padx=6, pady=6, sticky="w")
-        ttk.Label(frm_potion, text="Tecla mana potion:").grid(row=1, column=6, padx=6, pady=6, sticky="e")
-        ttk.Entry(frm_potion, textvariable=self.mana_key, width=8).grid(row=1, column=7, padx=6, pady=6, sticky="w")
+        ttk.Label(frm_potion, text="Cooldown ms:").grid(row=1, column=0, padx=6, pady=4)
+        ttk.Entry(frm_potion, textvariable=self.potion_cooldown_ms, width=8).grid(row=1, column=1, padx=6, pady=4)
 
-        ttk.Label(frm_potion, text="Cooldown ms:").grid(row=1, column=8, padx=6, pady=6, sticky="e")
-        ttk.Entry(frm_potion, textvariable=self.potion_cooldown_ms, width=8).grid(row=1, column=9, padx=6, pady=6, sticky="w")
+        ttk.Label(frm_potion, text="Região HP x,y,w,h (rel. janela):").grid(row=1, column=2, padx=6, pady=4)
+        ttk.Entry(frm_potion, textvariable=self.hp_region, width=18).grid(row=1, column=3, padx=6, pady=4)
+        ttk.Label(frm_potion, text="Região Mana x,y,w,h (rel. janela):").grid(row=1, column=4, padx=6, pady=4)
+        ttk.Entry(frm_potion, textvariable=self.mana_region, width=18).grid(row=1, column=5, padx=6, pady=4)
 
-        ttk.Button(frm_potion, text="Salvar potion settings", command=self._save_potion_settings).grid(row=2, column=7, padx=6, pady=6, sticky="ew")
-        ttk.Button(frm_potion, text="Iniciar monitor potion", command=self._start_potion_monitor).grid(row=2, column=8, padx=6, pady=6, sticky="ew")
-        ttk.Button(frm_potion, text="Parar monitor potion", command=self._stop_potion_monitor).grid(row=2, column=9, padx=6, pady=6, sticky="ew")
+        ttk.Button(frm_potion, text="Salvar potion settings", command=self._save_potion_settings).grid(row=2, column=5, padx=6, pady=4)
+        ttk.Button(frm_potion, text="Iniciar monitor potion", command=self._start_potion_monitor).grid(row=2, column=6, padx=6, pady=4)
+        ttk.Button(frm_potion, text="Parar monitor potion", command=self._stop_potion_monitor).grid(row=2, column=7, padx=6, pady=4)
+
+        ttk.Label(frm_potion, text="HP detectado:").grid(row=3, column=0, padx=6, pady=4)
+        ttk.Label(frm_potion, textvariable=self.detected_hp_pct).grid(row=3, column=1, padx=6, pady=4)
+        ttk.Label(frm_potion, text="Mana detectada:").grid(row=3, column=2, padx=6, pady=4)
+        ttk.Label(frm_potion, textvariable=self.detected_mana_pct).grid(row=3, column=3, padx=6, pady=4)
+
+        ttk.Label(frm_potion, text="Fallback manual HP %:").grid(row=3, column=4, padx=6, pady=4)
+        ttk.Entry(frm_potion, textvariable=self.current_hp_pct, width=8).grid(row=3, column=5, padx=6, pady=4)
+        ttk.Label(frm_potion, text="Fallback manual Mana %:").grid(row=3, column=6, padx=6, pady=4)
+        ttk.Entry(frm_potion, textvariable=self.current_mana_pct, width=8).grid(row=3, column=7, padx=6, pady=4)
 
         frm_manual = ttk.LabelFrame(root, text="5) Envio manual")
         frm_manual.grid(row=4, column=0, padx=10, pady=6, sticky="ew")
-        ttk.Label(frm_manual, text="Tecla manual:").grid(row=0, column=0, padx=8, pady=6, sticky="w")
-        ttk.Entry(frm_manual, textvariable=self.manual_key, width=10).grid(row=0, column=1, padx=8, pady=6, sticky="w")
-        ttk.Label(frm_manual, text="Hold ms:").grid(row=0, column=2, padx=8, pady=6, sticky="e")
-        ttk.Entry(frm_manual, textvariable=self.hold_ms, width=8).grid(row=0, column=3, padx=8, pady=6, sticky="w")
-        ttk.Button(frm_manual, text="Enviar tecla agora", command=self._send_manual_key).grid(row=0, column=4, padx=8, pady=6, sticky="ew")
+        ttk.Label(frm_manual, text="Tecla:").grid(row=0, column=0, padx=8, pady=6)
+        ttk.Entry(frm_manual, textvariable=self.manual_key, width=10).grid(row=0, column=1, padx=8, pady=6)
+        ttk.Label(frm_manual, text="hold_ms:").grid(row=0, column=2, padx=8, pady=6)
+        ttk.Entry(frm_manual, textvariable=self.hold_ms, width=8).grid(row=0, column=3, padx=8, pady=6)
+        ttk.Button(frm_manual, text="Enviar", command=self._send_manual_key).grid(row=0, column=4, padx=8, pady=6)
 
         frm_log = ttk.LabelFrame(root, text="6) Log")
         frm_log.grid(row=5, column=0, padx=10, pady=6, sticky="nsew")
@@ -321,15 +339,27 @@ class TibiaMacroApp:
         self.log_text.grid(row=0, column=0, sticky="nsew", padx=6, pady=6)
 
     def _log(self, message: str) -> None:
-        self.log_text.insert("end", f"{time.strftime('%H:%M:%S')} - {message}\n")
-        self.log_text.see("end")
+        def write() -> None:
+            self.log_text.insert("end", f"{time.strftime('%H:%M:%S')} - {message}\n")
+            self.log_text.see("end")
+
+        if threading.current_thread() is threading.main_thread():
+            write()
+        else:
+            self.root.after(0, write)
+
+    def _set_var_threadsafe(self, var: tk.StringVar, value: str) -> None:
+        if threading.current_thread() is threading.main_thread():
+            var.set(value)
+        else:
+            self.root.after(0, lambda: var.set(value))
 
     def _load_config_data(self) -> None:
         self.config_data = self.runner._load_json_config(self.config_path)
 
     def _save_config_data(self) -> None:
-        with self.config_path.open("w", encoding="utf-8") as file:
-            json.dump(self.config_data, file, indent=2, ensure_ascii=False)
+        with self.config_path.open("w", encoding="utf-8") as f:
+            json.dump(self.config_data, f, indent=2, ensure_ascii=False)
 
     def _refresh_windows(self) -> None:
         try:
@@ -344,8 +374,8 @@ class TibiaMacroApp:
     def _refresh_macros(self) -> None:
         try:
             self._load_config_data()
-            self.macros = [self.runner.parse_macro(macro) for macro in self.config_data.get("macros", [])]
-            names = [macro.name for macro in self.macros]
+            self.macros = [self.runner.parse_macro(m) for m in self.config_data.get("macros", [])]
+            names = [m.name for m in self.macros]
             self.macro_combo["values"] = names
             if names and self.selected_macro.get() not in names:
                 self.selected_macro.set(names[0])
@@ -368,24 +398,18 @@ class TibiaMacroApp:
 
     def _load_potion_editor(self) -> None:
         raw = self.config_data.get("potion_settings", {})
-        potion = PotionSettings(
-            hp_threshold=int(raw.get("hp_threshold", 50)),
-            mana_threshold=int(raw.get("mana_threshold", 40)),
-            hp_key=str(raw.get("hp_key", "f4")),
-            mana_key=str(raw.get("mana_key", "f5")),
-            cooldown_ms=int(raw.get("cooldown_ms", 300)),
-        )
-        self.hp_threshold.set(str(potion.hp_threshold))
-        self.mana_threshold.set(str(potion.mana_threshold))
-        self.hp_key.set(potion.hp_key)
-        self.mana_key.set(potion.mana_key)
-        self.potion_cooldown_ms.set(str(potion.cooldown_ms))
+        self.hp_threshold.set(str(raw.get("hp_threshold", 50)))
+        self.mana_threshold.set(str(raw.get("mana_threshold", 40)))
+        self.hp_key.set(str(raw.get("hp_key", "f4")))
+        self.mana_key.set(str(raw.get("mana_key", "f5")))
+        self.potion_cooldown_ms.set(str(raw.get("cooldown_ms", 300)))
+        self.hp_region.set(str(raw.get("hp_region", "")))
+        self.mana_region.set(str(raw.get("mana_region", "")))
 
     def _run_in_background(self, fn: Callable[[], None], label: str) -> None:
         if self.worker and self.worker.is_alive():
-            self._log("Já existe execução em andamento. Clique em Parar antes de iniciar outro.")
+            self._log("Já existe execução em andamento.")
             return
-
         self.runner.stop()
         self.runner = TibiaMacroRunner(dry_run=self.dry_run.get())
 
@@ -426,7 +450,6 @@ class TibiaMacroApp:
         if not macro_name:
             self._log("Selecione um macro para editar.")
             return
-
         try:
             key = self.edit_key.get().strip()
             hold_ms = int(self.edit_hold_ms.get().strip() or "0")
@@ -434,73 +457,92 @@ class TibiaMacroApp:
             repeat = int(self.edit_repeat.get().strip() or "1")
             interval_ms = int(self.edit_interval_ms.get().strip() or "0")
         except ValueError:
-            self._log("Valores numéricos inválidos no editor do macro.")
+            self._log("Valores inválidos no editor do macro.")
             return
-
         if not key:
-            self._log("A tecla do macro não pode ficar vazia.")
+            self._log("Tecla do macro vazia.")
             return
 
-        try:
-            self._load_config_data()
-            for raw_macro in self.config_data.get("macros", []):
-                if str(raw_macro.get("name", "")) == macro_name:
-                    actions = raw_macro.get("actions", [])
-                    if not actions:
-                        actions = [{"key": key, "hold_ms": hold_ms, "delay_ms": delay_ms}]
-                    else:
-                        actions[0]["key"] = key
-                        actions[0]["hold_ms"] = hold_ms
-                        actions[0]["delay_ms"] = delay_ms
-                    raw_macro["actions"] = actions
-                    raw_macro["repeat"] = repeat
-                    raw_macro["interval_ms"] = interval_ms
-                    self._save_config_data()
-                    self._refresh_macros()
-                    self._log(f"Macro '{macro_name}' salvo com sucesso.")
-                    return
-            self._log("Macro selecionado não encontrado para salvar.")
-        except Exception as exc:
-            self._log(f"Erro ao salvar macro: {exc}")
+        self._load_config_data()
+        for raw_macro in self.config_data.get("macros", []):
+            if str(raw_macro.get("name", "")) != macro_name:
+                continue
+            actions = raw_macro.get("actions", [])
+            if not actions:
+                actions = [{"key": key, "hold_ms": hold_ms, "delay_ms": delay_ms}]
+            else:
+                actions[0]["key"] = key
+                actions[0]["hold_ms"] = hold_ms
+                actions[0]["delay_ms"] = delay_ms
+            raw_macro["actions"] = actions
+            raw_macro["repeat"] = repeat
+            raw_macro["interval_ms"] = interval_ms
+            self._save_config_data()
+            self._refresh_macros()
+            self._log(f"Macro '{macro_name}' salvo.")
+            return
+        self._log("Macro não encontrado para salvar.")
 
     def _potion_settings_from_ui(self) -> Optional[PotionSettings]:
         try:
+            parse_region(self.hp_region.get())
+            parse_region(self.mana_region.get())
             return PotionSettings(
                 hp_threshold=int(self.hp_threshold.get().strip() or "50"),
                 mana_threshold=int(self.mana_threshold.get().strip() or "40"),
                 hp_key=self.hp_key.get().strip() or "f4",
                 mana_key=self.mana_key.get().strip() or "f5",
                 cooldown_ms=int(self.potion_cooldown_ms.get().strip() or "300"),
+                hp_region=self.hp_region.get().strip(),
+                mana_region=self.mana_region.get().strip(),
             )
-        except ValueError:
-            self._log("Valores inválidos no painel de potion.")
+        except ValueError as exc:
+            self._log(f"Configuração inválida de potion: {exc}")
             return None
 
     def _save_potion_settings(self) -> None:
         settings = self._potion_settings_from_ui()
         if settings is None:
             return
-        try:
-            self._load_config_data()
-            self.config_data["potion_settings"] = {
-                "hp_threshold": settings.hp_threshold,
-                "mana_threshold": settings.mana_threshold,
-                "hp_key": settings.hp_key,
-                "mana_key": settings.mana_key,
-                "cooldown_ms": settings.cooldown_ms,
-            }
-            self._save_config_data()
-            self._log("Potion settings salvas com sucesso.")
-        except Exception as exc:
-            self._log(f"Erro ao salvar potion settings: {exc}")
+        self._load_config_data()
+        self.config_data["potion_settings"] = {
+            "hp_threshold": settings.hp_threshold,
+            "mana_threshold": settings.mana_threshold,
+            "hp_key": settings.hp_key,
+            "mana_key": settings.mana_key,
+            "cooldown_ms": settings.cooldown_ms,
+            "hp_region": settings.hp_region,
+            "mana_region": settings.mana_region,
+        }
+        self._save_config_data()
+        self._log("Potion settings salvas.")
 
-    def _activate_selected_window_if_any(self, local_runner: TibiaMacroRunner) -> None:
-        selected = self.selected_window.get().strip()
-        if not selected.startswith("Tibia - "):
+    def _selected_window_title(self) -> str:
+        return self.selected_window.get().strip()
+
+    def _activate_selected_window_if_any(self, local_runner: TibiaMacroRunner, selected_window: str) -> None:
+        if not selected_window.startswith("Tibia - "):
             return
-        character_name = selected.replace("Tibia - ", "", 1)
+        character_name = selected_window.replace("Tibia - ", "", 1)
         window = local_runner.find_tibia_window("Tibia - ", character_name)
         local_runner.activate_window(window)
+
+    def _capture_region_percent(self, selected_window: str, region_rel: tuple[int, int, int, int], kind: str) -> int:
+        if pyautogui is None:
+            raise TibiaWindowError("pyautogui não está disponível para captura da barra.")
+        if not selected_window.startswith("Tibia - "):
+            raise TibiaWindowError("Selecione uma janela Tibia para detectar HP/Mana automaticamente.")
+
+        character_name = selected_window.replace("Tibia - ", "", 1)
+        window = self.potion_runner.find_tibia_window("Tibia - ", character_name)
+        left = int(window.left)
+        top = int(window.top)
+
+        x, y, w, h = region_rel
+        region_abs = (left + x, top + y, w, h)
+        img = pyautogui.screenshot(region=region_abs).convert("RGB")
+        pixels = list(img.getdata())
+        return compute_bar_percent_from_rgb(pixels, kind)
 
     def _start_potion_monitor(self) -> None:
         if self.potion_worker and self.potion_worker.is_alive():
@@ -511,6 +553,10 @@ class TibiaMacroApp:
         if settings is None:
             return
 
+        selected_window = self._selected_window_title()
+        hp_region = parse_region(settings.hp_region)
+        mana_region = parse_region(settings.mana_region)
+
         self.potion_stop_event.clear()
         self.potion_runner = TibiaMacroRunner(dry_run=self.dry_run.get())
 
@@ -518,17 +564,27 @@ class TibiaMacroApp:
             self._log("Monitor de potion iniciado.")
             while not self.potion_stop_event.is_set():
                 try:
-                    hp = int(self.current_hp_pct.get().strip() or "100")
-                    mana = int(self.current_mana_pct.get().strip() or "100")
+                    self._activate_selected_window_if_any(self.potion_runner, selected_window)
 
-                    self._activate_selected_window_if_any(self.potion_runner)
+                    if hp_region is not None:
+                        hp = self._capture_region_percent(selected_window, hp_region, "hp")
+                    else:
+                        hp = int(self.current_hp_pct.get().strip() or "100")
+
+                    if mana_region is not None:
+                        mana = self._capture_region_percent(selected_window, mana_region, "mana")
+                    else:
+                        mana = int(self.current_mana_pct.get().strip() or "100")
+
+                    self._set_var_threadsafe(self.detected_hp_pct, f"{hp}%")
+                    self._set_var_threadsafe(self.detected_mana_pct, f"{mana}%")
 
                     if hp <= settings.hp_threshold:
                         self.potion_runner._send_key(settings.hp_key, 0)
-                        self._log(f"Potion de vida usado (hp={hp}%, tecla={settings.hp_key}).")
+                        self._log(f"Potion HP usado (hp={hp}%, tecla={settings.hp_key}).")
                     if mana <= settings.mana_threshold:
                         self.potion_runner._send_key(settings.mana_key, 0)
-                        self._log(f"Potion de mana usado (mana={mana}%, tecla={settings.mana_key}).")
+                        self._log(f"Potion Mana usado (mana={mana}%, tecla={settings.mana_key}).")
 
                     time.sleep(max(settings.cooldown_ms, 100) / 1000)
                 except Exception as exc:
@@ -567,15 +623,14 @@ class TibiaMacroApp:
         if not key:
             self._log("Informe uma tecla manual.")
             return
-
         try:
             hold = int(self.hold_ms.get().strip() or "0")
         except ValueError:
-            self._log("Hold ms inválido.")
+            self._log("hold_ms inválido.")
             return
 
         try:
-            self._activate_selected_window_if_any(self.runner)
+            self._activate_selected_window_if_any(self.runner, self._selected_window_title())
             self.runner._send_key(key, hold)
             self._log(f"Tecla enviada: {key} (hold_ms={hold})")
         except Exception as exc:
@@ -586,18 +641,18 @@ class TibiaMacroApp:
         self._log("Solicitado stop da execução de macro.")
 
     def run(self) -> None:
-        self._log("Interface pronta. Escolha a janela Tibia e controle tudo na tela única.")
+        self._log("Interface pronta.")
         self.root.mainloop()
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Macro para Tibia com detecção automática de janela")
-    parser.add_argument("--config", type=Path, default=CONFIG_PATH, help="Caminho para o macros.json")
-    parser.add_argument("--macro", help="Nome do macro específico para rodar")
-    parser.add_argument("--run-all", action="store_true", help="Executa todos os macros na ordem")
-    parser.add_argument("--list-windows", action="store_true", help="Lista janelas do Tibia detectadas")
-    parser.add_argument("--dry-run", action="store_true", help="Não envia teclas, apenas simula")
-    parser.add_argument("--gui", action="store_true", help="Abre interface com todas as funções em uma tela")
+    parser.add_argument("--config", type=Path, default=CONFIG_PATH)
+    parser.add_argument("--macro")
+    parser.add_argument("--run-all", action="store_true")
+    parser.add_argument("--list-windows", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--gui", action="store_true")
     return parser
 
 
@@ -615,7 +670,6 @@ def main(argv: Optional[list[str]] = None) -> int:
             return 1
 
     runner = TibiaMacroRunner(dry_run=args.dry_run)
-
     try:
         if args.list_windows:
             windows = runner.list_tibia_windows()
@@ -633,7 +687,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             return 1
 
         if args.macro:
-            selected = [macro for macro in macros if macro.name.lower() == args.macro.lower()]
+            selected = [m for m in macros if m.name.lower() == args.macro.lower()]
             if not selected:
                 print(f"Macro '{args.macro}' não encontrado.")
                 return 1
@@ -646,7 +700,6 @@ def main(argv: Optional[list[str]] = None) -> int:
         for macro in selected:
             print(f"Executando macro: {macro.name}")
             runner.run_macro(macro)
-
         return 0
     except (TibiaWindowError, FileNotFoundError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
         print(f"Erro: {exc}")
