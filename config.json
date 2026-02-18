@@ -1,0 +1,270 @@
+{
+  "fps": 15,
+  "window_title_prefix": "Tibia - ",
+  "hp_bar_roi": {
+    "x": 258,
+    "y": 48,
+    "w": 430,
+    "h": 10
+  },
+  "mp_bar_roi": {
+    "x": 700,
+    "y": 48,
+    "w": 430,
+    "h": 10
+  },
+  "hp_hsv_lower": [
+    40,
+    70,
+    60
+  ],
+  "hp_hsv_upper": [
+    95,
+    255,
+    255
+  ],
+  "hp_hsv_lower2": [
+    0,
+    120,
+    70
+  ],
+  "hp_hsv_upper2": [
+    10,
+    255,
+    255
+  ],
+  "mp_hsv_lower": [
+    100,
+    120,
+    60
+  ],
+  "mp_hsv_upper": [
+    135,
+    255,
+    255
+  ],
+  "smoothing": {
+    "mode": "ema",
+    "ema_alpha": 0.35,
+    "median_window": 5
+  },
+  "alerts": {
+    "sound_enabled": true,
+    "default_cooldown_seconds": 3.0,
+    "log_file": "monitor.log"
+  },
+  "rules": [
+    {
+      "id": "rule_ring_hp_40",
+      "category": "rings_amulets",
+      "metric": "HP",
+      "operator": "<=",
+      "threshold": 40,
+      "action_name": "Trocar para Ring X",
+      "key": "F1",
+      "cooldown_seconds": 3.0,
+      "enabled": true
+    },
+    {
+      "id": "rule_heal_hp_80",
+      "category": "healing",
+      "metric": "HP",
+      "operator": "<=",
+      "threshold": 80,
+      "action_name": "Usar Potion A",
+      "key": "F2",
+      "cooldown_seconds": 2.0,
+      "enabled": true
+    },
+    {
+      "id": "rule_heal_hp_50",
+      "category": "healing",
+      "metric": "HP",
+      "operator": "<=",
+      "threshold": 50,
+      "action_name": "Usar Potion B",
+      "key": "F3",
+      "cooldown_seconds": 2.0,
+      "enabled": true
+    },
+    {
+      "id": "rule_mana_75",
+      "category": "healing",
+      "metric": "MP",
+      "operator": "<=",
+      "threshold": 75,
+      "action_name": "Usar Potion A",
+      "key": "F2",
+      "cooldown_seconds": 2.0,
+      "enabled": true
+    },
+    {
+      "id": "rule_mana_50",
+      "category": "healing",
+      "metric": "MP",
+      "operator": "<=",
+      "threshold": 50,
+      "action_name": "Usar Potion B",
+      "key": "F3",
+      "cooldown_seconds": 2.0,
+      "enabled": true
+    }
+  ],
+  "hp_hsv_lower3": [
+    35,
+    60,
+    60
+  ],
+  "hp_hsv_upper3": [
+    90,
+    255,
+    255
+  ],
+  "read_mode": "bar_hsv",
+  "recording": {
+    "enabled": false,
+    "output_dir": "recordings"
+  },
+  "features": [
+    {
+      "name": "Alerts",
+      "done": false,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 5
+    },
+    {
+      "name": "Auto amulet",
+      "done": true,
+      "enabled": false,
+      "key": "F7",
+      "interval_seconds": 1.0
+    },
+    {
+      "name": "Auto login",
+      "done": false,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 5
+    },
+    {
+      "name": "Auto ring",
+      "done": true,
+      "enabled": false,
+      "key": "F8",
+      "interval_seconds": 1.0
+    },
+    {
+      "name": "Auto server save",
+      "done": false,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 5
+    },
+    {
+      "name": "Cavebot",
+      "done": true,
+      "enabled": false,
+      "key": "F9",
+      "interval_seconds": 0.7
+    },
+    {
+      "name": "Combo Spells",
+      "done": true,
+      "enabled": false,
+      "key": "F10",
+      "interval_seconds": 1.2
+    },
+    {
+      "name": "Drop flasks",
+      "done": true,
+      "enabled": false,
+      "key": "F11",
+      "interval_seconds": 2.5
+    },
+    {
+      "name": "Deposit gold",
+      "done": true,
+      "enabled": false,
+      "key": "F12",
+      "interval_seconds": 2.5
+    },
+    {
+      "name": "Deposit non stacked items",
+      "done": true,
+      "enabled": false,
+      "key": "1",
+      "interval_seconds": 2.5
+    },
+    {
+      "name": "Deposit stacked items",
+      "done": true,
+      "enabled": false,
+      "key": "2",
+      "interval_seconds": 2.5
+    },
+    {
+      "name": "Fish",
+      "done": false,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 5
+    },
+    {
+      "name": "Food eater",
+      "done": true,
+      "enabled": false,
+      "key": "3",
+      "interval_seconds": 30
+    },
+    {
+      "name": "Healing",
+      "done": true,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 1
+    },
+    {
+      "name": "Smart Targeting",
+      "done": true,
+      "enabled": false,
+      "key": "4",
+      "interval_seconds": 0.8
+    },
+    {
+      "name": "Refill",
+      "done": true,
+      "enabled": false,
+      "key": "5",
+      "interval_seconds": 3
+    },
+    {
+      "name": "Quick loot",
+      "done": true,
+      "enabled": false,
+      "key": "R",
+      "interval_seconds": 0.8
+    },
+    {
+      "name": "Sell flasks",
+      "done": false,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 5
+    },
+    {
+      "name": "Sell items",
+      "done": false,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 5
+    },
+    {
+      "name": "Train",
+      "done": false,
+      "enabled": false,
+      "key": "",
+      "interval_seconds": 5
+    }
+  ]
+}
