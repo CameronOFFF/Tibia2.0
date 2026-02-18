@@ -1,13 +1,13 @@
-# Tibia Macro (PyTibia-style)
+# Tibia Macro (tela única)
 
-Projeto de macro para Tibia com foco em:
+Agora o projeto abre **uma interface única** com todas as funções na mesma tela:
 
-- detectar janela do client no padrão `Tibia - NOME_PERSONAGEM`;
-- ativar a janela automaticamente;
-- enviar teclas em sequência (macro);
-- repetir por número de ciclos, por tempo ou indefinidamente.
-
-> ⚠️ Este projeto é para automação local de teclado/janela em ambiente Windows. Use por sua conta e risco, respeitando os termos do jogo e legislação local.
+- detectar cliente `Tibia - NOME_PERSONAGEM`;
+- escolher macro do `macros.json`;
+- executar macro selecionado ou todos;
+- parar execução;
+- envio manual de tecla;
+- log em tempo real.
 
 ## Instalação
 
@@ -19,50 +19,47 @@ pip install -r requirements.txt
 
 ## Configuração (`macros.json`)
 
-Cada macro possui:
+Campos de cada macro:
 
 - `name`: nome do macro;
-- `window_title_prefix`: prefixo da janela (por padrão `Tibia - `);
-- `character_name`: nome exato do personagem (opcional, mas recomendado);
-- `actions`: lista de teclas;
-- `repeat`: quantas vezes repetir (`0` = infinito);
+- `window_title_prefix`: prefixo da janela (normalmente `Tibia - `);
+- `character_name`: nome do personagem;
+- `actions`: sequência de teclas;
+- `repeat`: repetições (`0` = infinito);
 - `interval_ms`: pausa entre ciclos;
-- `run_for_seconds`: opcional, limita o tempo total.
+- `run_for_seconds`: limite total opcional.
 
-Ação (`actions`):
+Cada item em `actions`:
 
 - `key`: tecla (`f1`, `f2`, `1`, `space`, etc.);
-- `hold_ms`: quanto tempo manter pressionada (opcional);
-- `delay_ms`: atraso após a ação.
+- `hold_ms`: tempo pressionando (opcional);
+- `delay_ms`: atraso após ação.
 
 ## Uso
 
-Listar janelas detectadas:
+### Interface única (recomendado)
+
+```bash
+python macro_tibia.py
+```
+
+ou
+
+```bash
+python macro_tibia.py --gui
+```
+
+### CLI (opcional)
 
 ```bash
 python macro_tibia.py --list-windows
-```
-
-Executar um macro específico:
-
-```bash
 python macro_tibia.py --macro heal
-```
-
-Executar todos os macros:
-
-```bash
 python macro_tibia.py --run-all
-```
-
-Simular sem enviar teclas:
-
-```bash
 python macro_tibia.py --macro heal --dry-run
 ```
 
 ## Observações
 
-- O macro procura janelas com título iniciando por `Tibia - `.
-- Se `character_name` estiver definido, ele exige título exato: `Tibia - NOME_PERSONAGEM`.
-- Em Linux/macOS a detecção/envio de teclas pode falhar dependendo do ambiente gráfico.
+- O app procura janela iniciando com `Tibia - `.
+- Se você escolher uma janela detectada na interface, ela sobrescreve o `character_name` do macro na hora da execução.
+- Em Linux/macOS pode haver limitações de automação conforme ambiente gráfico.
