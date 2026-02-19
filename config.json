@@ -1,0 +1,59 @@
+{
+  "fps": 15,
+  "log_file": "monitor.log",
+  "history_seconds": 60,
+  "max_hp": 5000,
+  "max_mp": 3000,
+  "hp_addresses": [
+    "0x1E380D77200",
+    "0x1E380D8B7D8",
+    "0x1E38F504CD8",
+    "0x1E3CE02BE90",
+    "0x1E3FC04CA68"
+  ],
+  "mp_addresses": [
+    "0x1E380D77218",
+    "0x1E380D8B7F0",
+    "0x1E38F504CE0",
+    "0x1E3CE02C4B0",
+    "0x1E3FC04CAB0"
+  ],
+  "hp_bar_roi": {"x": 50, "y": 40, "w": 220, "h": 12},
+  "mp_bar_roi": {"x": 50, "y": 58, "w": 220, "h": 12},
+  "hp_hsv_lower": [35, 40, 40],
+  "hp_hsv_upper": [90, 255, 255],
+  "mp_hsv_lower": [90, 40, 40],
+  "mp_hsv_upper": [140, 255, 255],
+  "rules": [
+    {
+      "name": "Ring X",
+      "metric": "HP",
+      "operator": "<=",
+      "threshold": 40,
+      "message": "Trocar para Ring X",
+      "sound": true,
+      "cooldown_seconds": 3,
+      "key": "F1"
+    },
+    {
+      "name": "Potion A",
+      "metric": "HP",
+      "operator": "<=",
+      "threshold": 80,
+      "message": "Usar Potion A",
+      "sound": true,
+      "cooldown_seconds": 2,
+      "key": "F2"
+    },
+    {
+      "name": "Potion B",
+      "metric": "HP",
+      "operator": "<=",
+      "threshold": 50,
+      "message": "Usar Potion B",
+      "sound": true,
+      "cooldown_seconds": 2,
+      "key": "F3"
+    }
+  ]
+}
