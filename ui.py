@@ -43,6 +43,7 @@ class AppConfig(BaseModel):
     history_seconds: int = 60
     max_hp: int = 5000
     max_mp: int = 3000
+    debug_memory: bool = True
     hp_addresses: list[str] = Field(default_factory=list)
     mp_addresses: list[str] = Field(default_factory=list)
     hp_bar_roi: Roi
@@ -84,6 +85,7 @@ class TibiaMonitorUI:
         self.hp_filter = PercentageFilter()
         self.mp_filter = PercentageFilter()
         self.history: deque[Sample] = deque()
+        self.last_debug_ts = 0.0
 
         self.hp_value = tk.DoubleVar(value=0)
         self.mp_value = tk.DoubleVar(value=0)
@@ -290,14 +292,37 @@ class TibiaMonitorUI:
             self.memory_reader = None
         self.status_text.set("Parado")
 
-    def read_first_valid(self, addresses: list[str]) -> int | None:
+    def read_memory_candidates(self, addresses: list[str]) -> list[tuple[str, int]]:
+        values: list[tuple[str, int]] = []
         if not self.memory_reader:
-            return None
+            return values
         for addr in addresses:
-            value = self.memory_reader.read_uint64(int(addr, 16))
-            if value is not None and value > 0:
-                return value
-        return None
+            raw = self.memory_reader.read_uint32(int(addr, 16))
+            if raw is not None:
+                values.append((addr, int(raw)))
+        return values
+
+    @staticmethod
+    def pick_current_value(candidates: list[tuple[str, int]], max_value: int) -> int | None:
+        if max_value <= 0:
+            return None
+        within_max = [v for _, v in candidates if 0 < v <= max_value]
+        if within_max:
+            return min(within_max)
+        positives = [v for _, v in candidates if v > 0]
+        return min(positives) if positives else None
+
+    def debug_memory_print(self, hp_candidates: list[tuple[str, int]], mp_candidates: list[tuple[str, int]], hp_current: int | None, mp_current: int | None, hp_percent: float | None, mp_percent: float | None) -> None:
+        now = time.time()
+        if not self.config.debug_memory or now - self.last_debug_ts < 1.0:
+            return
+        self.last_debug_ts = now
+        line = (
+            f"[DEBUG_MEM] HP candidates={hp_candidates} | chosen={hp_current} | max_hp={self.max_hp_var.get()} | hp%={hp_percent} || "
+            f"MP candidates={mp_candidates} | chosen={mp_current} | max_mp={self.max_mp_var.get()} | mp%={mp_percent}"
+        )
+        print(line)
+        logging.info(line)
 
     def monitor_loop(self) -> None:
         last = time.time()
@@ -309,11 +334,15 @@ class TibiaMonitorUI:
                     continue
 
                 frame = self.window_manager.capture_window(self.selected_hwnd)
-                hp_current = self.read_first_valid(self.config.hp_addresses)
-                mp_current = self.read_first_valid(self.config.mp_addresses)
+
+                hp_candidates = self.read_memory_candidates(self.config.hp_addresses)
+                mp_candidates = self.read_memory_candidates(self.config.mp_addresses)
+                hp_current = self.pick_current_value(hp_candidates, self.max_hp_var.get())
+                mp_current = self.pick_current_value(mp_candidates, self.max_mp_var.get())
 
                 hp_percent = MemoryPercentReader.current_to_percent(hp_current, self.max_hp_var.get())
                 mp_percent = MemoryPercentReader.current_to_percent(mp_current, self.max_mp_var.get())
+                self.debug_memory_print(hp_candidates, mp_candidates, hp_current, mp_current, hp_percent, mp_percent)
 
                 if hp_percent is None:
                     hp_percent = BarReader.from_hsv_mask(

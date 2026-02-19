@@ -25,8 +25,6 @@ class WindowCaptureError(RuntimeError):
 
 class TibiaWindowManager:
     def __init__(self) -> None:
-        # mss usa handles thread-local no Windows;
-        # por isso criamos uma instância por thread para evitar AttributeError srcdc/memdc.
         self._thread_local = threading.local()
 
     def _get_sct(self) -> mss:
@@ -99,8 +97,8 @@ class MemoryReader:
     def __del__(self) -> None:
         self.close()
 
-    def read_uint64(self, address: int) -> Optional[int]:
-        buffer = ctypes.c_ulonglong(0)
+    def read_uint32(self, address: int) -> Optional[int]:
+        buffer = ctypes.c_uint32(0)
         bytes_read = ctypes.c_size_t(0)
         ok = ctypes.windll.kernel32.ReadProcessMemory(
             self.handle,

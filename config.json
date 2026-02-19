@@ -18,12 +18,38 @@
     "0x1E3CE02C4B0",
     "0x1E3FC04CAB0"
   ],
-  "hp_bar_roi": {"x": 50, "y": 40, "w": 220, "h": 12},
-  "mp_bar_roi": {"x": 50, "y": 58, "w": 220, "h": 12},
-  "hp_hsv_lower": [35, 40, 40],
-  "hp_hsv_upper": [90, 255, 255],
-  "mp_hsv_lower": [90, 40, 40],
-  "mp_hsv_upper": [140, 255, 255],
+  "hp_bar_roi": {
+    "x": 50,
+    "y": 40,
+    "w": 220,
+    "h": 12
+  },
+  "mp_bar_roi": {
+    "x": 50,
+    "y": 58,
+    "w": 220,
+    "h": 12
+  },
+  "hp_hsv_lower": [
+    35,
+    40,
+    40
+  ],
+  "hp_hsv_upper": [
+    90,
+    255,
+    255
+  ],
+  "mp_hsv_lower": [
+    90,
+    40,
+    40
+  ],
+  "mp_hsv_upper": [
+    140,
+    255,
+    255
+  ],
   "rules": [
     {
       "name": "Ring X",
@@ -55,5 +81,6 @@
       "cooldown_seconds": 2,
       "key": "F3"
     }
-  ]
+  ],
+  "debug_memory": true
 }
