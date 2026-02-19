@@ -9,13 +9,13 @@ Aplicativo Windows em Python para monitorar HP/MP do Tibia, com foco em **leitur
 - Leitura de HP/MP atual por múltiplos endereços de memória.
 - Campos para definir **HP máxima** e **MP máxima** para cálculo percentual.
 - Fallback opcional por análise de barra (HSV + ROI), útil para calibração.
-- Regras de alerta (Rings/Amulets e Healing), com:
-  - condição (`<=` / `>=`)
+- Regras/macros de alerta (Rings/Amulets e Healing), com:
+  - condição (`<=`)
   - threshold
   - som
   - cooldown por regra
   - envio de tecla para janela do Tibia
-- UI com progress bars, status (`OK/Atenção/Crítico`), FPS e lista de regras.
+- UI com progress bars, status (`OK/Atenção/Crítico`), FPS, lista de macros e botões para **Adicionar Macro** / **Deletar Selecionado**.
 - Log em console e arquivo.
 
 ## Instalação
@@ -49,6 +49,12 @@ Edite `config.json`:
 
 Também é possível editar manualmente os valores no `config.json`.
 
+## Criar/remover macros
+
+- **Adicionar Macro**: define nome, tipo (HP/MP), percentual, tecla (F1..F12 etc.), mensagem, cooldown e som.
+- **Deletar Selecionado**: remove o macro destacado na lista.
+- Clique **Salvar config** para persistir os macros no `config.json`.
+
 ## Rodar
 
 ```bash
@@ -59,4 +65,5 @@ python main.py
 
 - Se a janela estiver minimizada, o monitor pausa automaticamente.
 - Se leitura de memória falhar para todos os endereços, o app tenta leitura por imagem da barra.
+- Foi corrigido o erro do `mss` em thread (`'_thread._local' has no attribute 'srcdc'`) criando capturador por thread.
 - `pywin32` e leitura de memória dependem de permissões do processo.

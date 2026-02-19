@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ctypes
-import ctypes.wintypes as wintypes
+import threading
 from dataclasses import dataclass
 from typing import Optional
 
@@ -25,7 +25,16 @@ class WindowCaptureError(RuntimeError):
 
 class TibiaWindowManager:
     def __init__(self) -> None:
-        self._sct = mss()
+        # mss usa handles thread-local no Windows;
+        # por isso criamos uma instância por thread para evitar AttributeError srcdc/memdc.
+        self._thread_local = threading.local()
+
+    def _get_sct(self) -> mss:
+        sct = getattr(self._thread_local, "sct", None)
+        if sct is None:
+            sct = mss()
+            self._thread_local.sct = sct
+        return sct
 
     def list_tibia_windows(self) -> list[TibiaWindow]:
         windows: list[TibiaWindow] = []
@@ -55,7 +64,7 @@ class TibiaWindowManager:
             raise WindowCaptureError("Janela minimizada")
 
         left, top, right, bottom = self.get_window_rect(hwnd)
-        raw = self._sct.grab({"left": left, "top": top, "width": right - left, "height": bottom - top})
+        raw = self._get_sct().grab({"left": left, "top": top, "width": right - left, "height": bottom - top})
         frame = np.array(raw)
         return cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
 
