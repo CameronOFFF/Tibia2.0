@@ -11,14 +11,15 @@ Aplicativo Windows em Python para monitorar HP/MP do Tibia, com foco em **leitur
   - **valor atual da memória** (HP/MP atual)
   - **HP Máxima/MP Máxima** definidas na UI/config
 - Debug de memória no console/log para validar leituras em tempo real.
-- Fallback opcional por análise de barra (HSV + ROI), útil para calibração.
-- Regras/macros de alerta (Rings/Amulets e Healing), com:
-  - condição (`<=`)
-  - threshold
-  - som
-  - cooldown por regra
-  - envio de tecla para janela do Tibia
-- UI com progress bars, status (`OK/Atenção/Crítico`), FPS, lista de macros e botões para **Adicionar Macro** / **Deletar Selecionado**.
+- Fallback opcional por análise de barra (HSV + ROI).
+- Macros de alerta com:
+  - nome do macro
+  - tipo (HP/MP)
+  - percentual com operador (`<=` ou `>=`)
+  - mensagem
+  - cooldown
+  - tecla para enviar na janela do Tibia
+- UI com progress bars, status (`OK/Atenção/Crítico`), FPS, lista de macros e botões para **Adicionar Macro / Editar Selecionado / Deletar Selecionado**.
 - Log em console e arquivo.
 
 ## Instalação
@@ -38,26 +39,15 @@ Edite `config.json`:
 - `max_hp` e `max_mp`: valores máximos do personagem.
 - `hp_addresses` e `mp_addresses`: lista de endereços (hex) para leitura atual.
 - `debug_memory`: mostra debug com candidatos de memória e valor escolhido.
-- `hp_bar_roi` e `mp_bar_roi`: coordenadas relativas à janela do Tibia (`x,y,w,h`).
-- `*_hsv_lower` e `*_hsv_upper`: ajuste de cor para fallback por imagem.
-- `rules`: regras de alerta e tecla.
+- `hp_bar_roi` e `mp_bar_roi`: coordenadas relativas à janela do Tibia (`x,y,w,h`) usadas apenas como fallback.
+- `rules`: regras/macros (sem som).
 
-## Calibrar ROI
+## Macros
 
-1. Selecione janela Tibia.
-2. Clique **Iniciar**.
-3. Clique **Calibrar ROIs**.
-4. Arraste o retângulo na imagem e confirme com ENTER.
-5. Escolha se a ROI é de HP (Sim) ou MP (Não).
-6. Salve configuração.
-
-Também é possível editar manualmente os valores no `config.json`.
-
-## Criar/remover macros
-
-- **Adicionar Macro**: define nome, tipo (HP/MP), percentual, tecla (F1..F12 etc.), mensagem, cooldown e som.
-- **Deletar Selecionado**: remove o macro destacado na lista.
-- Clique **Salvar config** para persistir os macros no `config.json`.
+- **Adicionar Macro**: cria macro com nome, tipo, operador do percentual (`<=` ou `>=`), percentual, tecla, mensagem e cooldown.
+- **Editar Selecionado**: edita os dados do macro selecionado na lista.
+- **Deletar Selecionado**: remove o macro selecionado.
+- Clique **Salvar config** para persistir no `config.json`.
 
 ## Rodar
 

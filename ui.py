@@ -9,9 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox, ttk
-import winsound
 
-import cv2
 from pydantic import BaseModel, Field
 
 from bar_reader import BarReader, MemoryPercentReader, PercentageFilter
@@ -32,7 +30,6 @@ class RuleConfig(BaseModel):
     operator: str = "<="
     threshold: float
     message: str
-    sound: bool = True
     cooldown_seconds: float = 3
     key: str = ""
 
@@ -153,7 +150,6 @@ class TibiaMonitorUI:
         controls.pack(fill=tk.X, pady=8)
         ttk.Button(controls, text="Iniciar", command=self.start_monitor).pack(side=tk.LEFT)
         ttk.Button(controls, text="Parar", command=self.stop_monitor).pack(side=tk.LEFT, padx=6)
-        ttk.Button(controls, text="Calibrar ROIs", command=self.open_calibration).pack(side=tk.LEFT)
         ttk.Button(controls, text="Salvar config", command=self.save_config).pack(side=tk.RIGHT)
 
         rules_frame = ttk.LabelFrame(top, text="Macros (Rings/Amulets e Healing)")
@@ -164,9 +160,8 @@ class TibiaMonitorUI:
         macros_row = ttk.Frame(top)
         macros_row.pack(fill=tk.X, pady=6)
         ttk.Button(macros_row, text="Adicionar Macro", command=self.open_add_macro_dialog).pack(side=tk.LEFT)
-        ttk.Button(macros_row, text="Deletar Selecionado", command=self.delete_selected_macro).pack(
-            side=tk.LEFT, padx=6
-        )
+        ttk.Button(macros_row, text="Editar Selecionado", command=self.edit_selected_macro).pack(side=tk.LEFT, padx=6)
+        ttk.Button(macros_row, text="Deletar Selecionado", command=self.delete_selected_macro).pack(side=tk.LEFT)
 
         ttk.Label(top, textvariable=self.toast_var, foreground="red").pack(fill=tk.X)
 
@@ -175,22 +170,22 @@ class TibiaMonitorUI:
         for r in self.rule_configs:
             self.rules_list.insert(
                 tk.END,
-                f"{r.metric} {r.operator} {r.threshold:.1f}% | {r.name} | {r.message} | tecla={r.key}",
+                f"{r.metric} {r.operator} {r.threshold:.1f}% | {r.name} | {r.message} | tecla={r.key} | cooldown={r.cooldown_seconds:.1f}s",
             )
 
-    def open_add_macro_dialog(self) -> None:
+    def _open_macro_dialog(self, initial: RuleConfig | None = None, index: int | None = None) -> None:
         dialog = tk.Toplevel(self.root)
-        dialog.title("Adicionar Macro")
+        dialog.title("Editar Macro" if initial else "Adicionar Macro")
         dialog.transient(self.root)
         dialog.grab_set()
 
-        name_var = tk.StringVar(value="Macro")
-        metric_var = tk.StringVar(value="HP")
-        threshold_var = tk.DoubleVar(value=50)
-        key_var = tk.StringVar(value="F1")
-        message_var = tk.StringVar(value="Enviar tecla")
-        sound_var = tk.BooleanVar(value=True)
-        cooldown_var = tk.DoubleVar(value=3)
+        name_var = tk.StringVar(value=initial.name if initial else "Macro")
+        metric_var = tk.StringVar(value=initial.metric if initial else "HP")
+        op_var = tk.StringVar(value=initial.operator if initial else "<=")
+        threshold_var = tk.DoubleVar(value=initial.threshold if initial else 50)
+        key_var = tk.StringVar(value=initial.key if initial else "F1")
+        message_var = tk.StringVar(value=initial.message if initial else "Enviar tecla")
+        cooldown_var = tk.DoubleVar(value=initial.cooldown_seconds if initial else 3)
 
         ttk.Label(dialog, text="Nome do macro").grid(row=0, column=0, sticky="w", padx=6, pady=4)
         ttk.Entry(dialog, textvariable=name_var, width=30).grid(row=0, column=1, padx=6, pady=4)
@@ -200,8 +195,11 @@ class TibiaMonitorUI:
             row=1, column=1, padx=6, pady=4
         )
 
-        ttk.Label(dialog, text="Percentual (<=)").grid(row=2, column=0, sticky="w", padx=6, pady=4)
-        ttk.Entry(dialog, textvariable=threshold_var, width=30).grid(row=2, column=1, padx=6, pady=4)
+        ttk.Label(dialog, text="Percentual").grid(row=2, column=0, sticky="w", padx=6, pady=4)
+        perc_row = ttk.Frame(dialog)
+        perc_row.grid(row=2, column=1, sticky="w", padx=6, pady=4)
+        ttk.Combobox(perc_row, textvariable=op_var, values=["<=", ">="], state="readonly", width=6).pack(side=tk.LEFT)
+        ttk.Entry(perc_row, textvariable=threshold_var, width=21).pack(side=tk.LEFT, padx=4)
 
         ttk.Label(dialog, text="Tecla (F1..F12, A..Z, 0..9)").grid(row=3, column=0, sticky="w", padx=6, pady=4)
         ttk.Entry(dialog, textvariable=key_var, width=30).grid(row=3, column=1, padx=6, pady=4)
@@ -211,8 +209,6 @@ class TibiaMonitorUI:
 
         ttk.Label(dialog, text="Cooldown (s)").grid(row=5, column=0, sticky="w", padx=6, pady=4)
         ttk.Entry(dialog, textvariable=cooldown_var, width=30).grid(row=5, column=1, padx=6, pady=4)
-
-        ttk.Checkbutton(dialog, text="Som", variable=sound_var).grid(row=6, column=1, sticky="w", padx=6, pady=4)
 
         def save_macro() -> None:
             try:
@@ -226,6 +222,9 @@ class TibiaMonitorUI:
             if not key:
                 messagebox.showerror("Erro", "Tecla é obrigatória")
                 return
+            if op_var.get() not in {"<=", ">="}:
+                messagebox.showerror("Erro", "Operador inválido")
+                return
             if not (1 <= threshold <= 100):
                 messagebox.showerror("Erro", "Percentual deve estar entre 1 e 100")
                 return
@@ -233,14 +232,17 @@ class TibiaMonitorUI:
             new_rule = RuleConfig(
                 name=name_var.get().strip() or "Macro",
                 metric=metric_var.get(),
-                operator="<=",
+                operator=op_var.get(),
                 threshold=threshold,
                 message=message_var.get().strip() or "Enviar tecla",
-                sound=bool(sound_var.get()),
                 cooldown_seconds=max(0.1, cooldown),
                 key=key,
             )
-            self.rule_configs.append(new_rule)
+
+            if index is None:
+                self.rule_configs.append(new_rule)
+            else:
+                self.rule_configs[index] = new_rule
             self.rebuild_rules_engine()
             self.refresh_rules_list()
             dialog.destroy()
@@ -249,6 +251,17 @@ class TibiaMonitorUI:
         buttons.grid(row=7, column=0, columnspan=2, sticky="e", padx=6, pady=8)
         ttk.Button(buttons, text="Salvar", command=save_macro).pack(side=tk.LEFT, padx=4)
         ttk.Button(buttons, text="Cancelar", command=dialog.destroy).pack(side=tk.LEFT)
+
+    def open_add_macro_dialog(self) -> None:
+        self._open_macro_dialog()
+
+    def edit_selected_macro(self) -> None:
+        sel = self.rules_list.curselection()
+        if not sel:
+            messagebox.showwarning("Atenção", "Selecione um macro na lista para editar")
+            return
+        idx = sel[0]
+        self._open_macro_dialog(initial=self.rule_configs[idx], index=idx)
 
     def delete_selected_macro(self) -> None:
         sel = self.rules_list.curselection()
@@ -312,7 +325,15 @@ class TibiaMonitorUI:
         positives = [v for _, v in candidates if v > 0]
         return min(positives) if positives else None
 
-    def debug_memory_print(self, hp_candidates: list[tuple[str, int]], mp_candidates: list[tuple[str, int]], hp_current: int | None, mp_current: int | None, hp_percent: float | None, mp_percent: float | None) -> None:
+    def debug_memory_print(
+        self,
+        hp_candidates: list[tuple[str, int]],
+        mp_candidates: list[tuple[str, int]],
+        hp_current: int | None,
+        mp_current: int | None,
+        hp_percent: float | None,
+        mp_percent: float | None,
+    ) -> None:
         now = time.time()
         if not self.config.debug_memory or now - self.last_debug_ts < 1.0:
             return
@@ -401,32 +422,11 @@ class TibiaMonitorUI:
         logging.warning(msg)
         self.root.after(0, lambda: self.toast_var.set(msg))
         self.root.after(2500, lambda: self.toast_var.set(""))
-        if rule.sound:
-            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
         if self.selected_hwnd and rule.key:
             try:
                 send_key(self.selected_hwnd, rule.key)
             except Exception as exc:
                 logging.error("Falha ao enviar tecla %s: %s", rule.key, exc)
-
-    def open_calibration(self) -> None:
-        if not self.selected_hwnd:
-            messagebox.showerror("Erro", "Selecione a janela e inicie o monitor antes")
-            return
-        try:
-            frame = self.window_manager.capture_window(self.selected_hwnd)
-        except Exception as exc:
-            messagebox.showerror("Erro", str(exc))
-            return
-
-        title = "Calibração ROI (arraste e pressione ENTER; ESC para cancelar)"
-        roi = cv2.selectROI(title, frame, fromCenter=False, showCrosshair=True)
-        cv2.destroyWindow(title)
-        if roi and roi[2] > 0 and roi[3] > 0:
-            mode = messagebox.askyesno("ROI", "Salvar ROI selecionada como HP? (Não = MP)")
-            target = self.config.hp_bar_roi if mode else self.config.mp_bar_roi
-            target.x, target.y, target.w, target.h = map(int, roi)
-            self.save_config()
 
 
 def run_app() -> None:
