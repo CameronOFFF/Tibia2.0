@@ -7,7 +7,7 @@
 <td><?= e($item['name']) ?></td><td><?= e($item['username']) ?></td><td>(<?= (int)$item['coord_x'] ?>|<?= (int)$item['coord_y'] ?>)</td><td><?= (int)$item['points'] ?></td>
 <td>
 <?php if ((int)$item['id'] !== (int)$village['id']): ?>
-<form method="post" action="/attack">
+<form method="post" action="<?= url('attack') ?>">
 <input type="hidden" name="target_village_id" value="<?= (int)$item['id'] ?>">
 <input type="number" name="spear" min="1" value="1">
 <button>Enviar ataque</button>

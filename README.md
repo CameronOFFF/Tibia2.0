@@ -61,6 +61,7 @@ E também `tribe_chat` para chat interno.
 2. Inicie Apache e MySQL no XAMPP Control Panel.
 3. Crie o banco importando `database/schema.sql` pelo phpMyAdmin.
 4. Ajuste `config/config.php` (host, banco, usuário, senha).
+   - `BASE_URL` pode ficar vazio (`''`) para detectar automaticamente o subdiretório (ex.: `/tribal/public/`).
 5. Acesse no navegador:
    - `http://localhost/Tibia2.0/public/`
 

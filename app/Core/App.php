@@ -13,8 +13,15 @@ final class App
 {
     public function run(): void
     {
-        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
-        $path = trim($path, '/');
+        $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
+        $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '/index.php');
+        $basePath = rtrim(dirname($scriptName), '/');
+
+        if ($basePath !== '' && $basePath !== '.' && str_starts_with($requestPath, $basePath)) {
+            $requestPath = substr($requestPath, strlen($basePath)) ?: '/';
+        }
+
+        $path = trim($requestPath, '/');
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
         $routes = [

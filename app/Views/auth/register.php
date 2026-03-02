@@ -1,5 +1,5 @@
 <?php require BASE_PATH . '/app/Views/partials/header.php'; ?>
-<form class="auth-box" method="post" action="/register">
+<form class="auth-box" method="post" action="<?= url('register') ?>">
     <h2>Cadastro</h2>
     <input name="username" placeholder="Usuário" required>
     <input name="email" type="email" placeholder="E-mail" required>

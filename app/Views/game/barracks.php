@@ -5,7 +5,7 @@
 <tr>
 <td><?= e($troop['name']) ?></td><td><?= (int)$troop['attack'] ?></td><td><?= (int)$troop['defense'] ?></td><td><?= (int)$troop['speed'] ?></td>
 <td><?= (int)$troop['cost_wood'] ?>/<?= (int)$troop['cost_clay'] ?>/<?= (int)$troop['cost_iron'] ?></td>
-<td><form method="post" action="/train"><input type="hidden" name="troop_id" value="<?= (int)$troop['id'] ?>"><input name="qty" type="number" min="1" value="10"><button>Treinar</button></form></td>
+<td><form method="post" action="<?= url('train') ?>"><input type="hidden" name="troop_id" value="<?= (int)$troop['id'] ?>"><input name="qty" type="number" min="1" value="10"><button>Treinar</button></form></td>
 </tr>
 <?php endforeach; ?>
 </table>

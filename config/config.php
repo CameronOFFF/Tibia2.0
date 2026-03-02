@@ -8,4 +8,5 @@ const DB_USER = 'root';
 const DB_PASS = '';
 const DB_CHARSET = 'utf8mb4';
 
-const BASE_URL = '/';
+// Deixe vazio para detecção automática baseada na pasta do projeto (ex.: /tribal/public/)
+const BASE_URL = '';

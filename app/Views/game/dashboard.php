@@ -1,6 +1,6 @@
 <?php require BASE_PATH . '/app/Views/partials/game_layout_start.php'; ?>
 <h2>Painel da Aldeia</h2>
-<form method="post" action="/village/rename">
+<form method="post" action="<?= url('village/rename') ?>">
     <input name="name" value="<?= e($village['name']) ?>" required>
     <button>Renomear</button>
 </form>
@@ -12,7 +12,7 @@
 <td><?= e($key) ?></td>
 <td><?= (int)$building['level'] ?></td>
 <td>
-<form method="post" action="/build">
+<form method="post" action="<?= url('build') ?>">
 <input type="hidden" name="building_key" value="<?= e($key) ?>">
 <button>Melhorar</button>
 </form>
