@@ -13,7 +13,7 @@ abstract class BaseController
     protected Auth $auth;
     protected Log $log;
 
-    public function __construct(protected readonly Database $database, protected readonly array $config)
+    public function __construct(protected Database $database, protected array $config)
     {
         $pdo = $this->database->connection();
         $this->auth = new Auth($pdo);

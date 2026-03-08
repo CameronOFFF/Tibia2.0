@@ -6,7 +6,7 @@ namespace Config;
 
 class Router
 {
-    public function __construct(private readonly Database $database, private readonly array $config)
+    public function __construct(private Database $database, private array $config)
     {
     }
 

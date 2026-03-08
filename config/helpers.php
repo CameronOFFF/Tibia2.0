@@ -25,7 +25,7 @@ function check_csrf(): void
     }
 }
 
-function redirect(string $route): never
+function redirect(string $route): void
 {
     header('Location: index.php?route=' . $route);
     exit;
