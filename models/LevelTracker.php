@@ -15,11 +15,12 @@ class LevelTracker
     public function syncWeek(array $members): void
     {
         foreach ($members as $member) {
-            $stmt = $this->pdo->prepare('INSERT INTO member_level_tracking (character_name, vocation, level_start_week, level_current, level_gain, week_start_date, updated_at) VALUES (:name, :vocation, :level, :level, 0, CURDATE(), NOW()) ON DUPLICATE KEY UPDATE level_current = VALUES(level_current), level_gain = VALUES(level_current) - level_start_week, vocation = VALUES(vocation), updated_at = NOW()');
+            $stmt = $this->pdo->prepare('INSERT INTO member_level_tracking (character_name, vocation, level_start_week, level_current, level_gain, week_start_date, updated_at) VALUES (:name, :vocation, :level_start, :level_current, 0, CURDATE(), NOW()) ON DUPLICATE KEY UPDATE level_current = VALUES(level_current), level_gain = VALUES(level_current) - level_start_week, vocation = VALUES(vocation), updated_at = NOW()');
             $stmt->execute([
                 'name' => $member['name'],
                 'vocation' => $member['vocation'],
-                'level' => $member['level'],
+                'level_start' => $member['level'],
+                'level_current' => $member['level'],
             ]);
         }
     }
