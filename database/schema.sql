@@ -72,5 +72,5 @@ CREATE TABLE guild_watch (
 );
 
 INSERT INTO users (username, password_hash, role) VALUES
-('owner', '$2y$10$u7I8YhlhL.0J8Ff6ipRDjOO0nUxwJ4WQ5d8nJzW0E20JvokJ2Qj6W', 'OWNER');
+('owner', '$2y$12$1HVGthFgriKHOTV1h9Cui.0Cdknna3xUi/mOpujX7dpTRMmQxmNv2', 'OWNER');
 -- senha padrão: owner123

@@ -38,3 +38,13 @@ Agende no Windows Task Scheduler ou cron:
 
 ## Excel
 Se `PhpSpreadsheet` estiver instalado via Composer, exporta `.xlsx` nativo. Sem biblioteca, usa fallback CSV salvo com extensão `.xlsx`.
+
+## Correção de login (owner/owner123)
+Se você importou uma versão antiga do `schema.sql`, rode este SQL no phpMyAdmin para corrigir o hash do usuário owner:
+
+```sql
+UPDATE users
+SET password_hash = '$2y$12$1HVGthFgriKHOTV1h9Cui.0Cdknna3xUi/mOpujX7dpTRMmQxmNv2'
+WHERE username = 'owner';
+```
+
