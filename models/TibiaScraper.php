@@ -13,34 +13,7 @@ class TibiaScraper
             return [];
         }
 
-        $dom = new \DOMDocument();
-        @$dom->loadHTML($html);
-        $xpath = new \DOMXPath($dom);
-        $rows = $xpath->query('//table//tr');
-        $members = [];
-
-        foreach ($rows as $row) {
-            $cells = $row->getElementsByTagName('td');
-            if ($cells->length < 3) {
-                continue;
-            }
-            $name = trim($cells->item(0)?->textContent ?? '');
-            $vocation = trim($cells->item(1)?->textContent ?? '');
-            $level = (int) preg_replace('/\D+/', '', $cells->item(2)?->textContent ?? '0');
-            $statusText = strtolower($row->textContent);
-            if ($name === '' || $level <= 0) {
-                continue;
-            }
-
-            $members[] = [
-                'name' => $name,
-                'vocation' => $vocation,
-                'level' => $level,
-                'online_status' => str_contains($statusText, 'online') ? 'online' : 'offline',
-            ];
-        }
-
-        return $members;
+        return $this->parseGuildMembersHtml($html);
     }
 
     public function fetchCharacter(string $url): ?array
@@ -67,6 +40,53 @@ class TibiaScraper
             'guild' => trim($guildMatch[1] ?? ''),
             'status' => str_contains(strtolower($html), 'currently online') ? 'online' : 'offline',
         ];
+    }
+
+    private function parseGuildMembersHtml(string $html): array
+    {
+        $dom = new \DOMDocument();
+        @$dom->loadHTML($html);
+        $xpath = new \DOMXPath($dom);
+
+        $memberRows = $xpath->query('//table//tr');
+        $members = [];
+
+        foreach ($memberRows as $row) {
+            $cells = $row->getElementsByTagName('td');
+            if ($cells->length < 5) {
+                continue;
+            }
+
+            $name = trim($cells->item(1)?->textContent ?? '');
+            $vocation = trim($cells->item(2)?->textContent ?? '');
+            $levelRaw = trim($cells->item(3)?->textContent ?? '');
+            $level = (int) preg_replace('/\D+/', '', $levelRaw);
+            $statusRaw = trim($cells->item(4)?->textContent ?? '');
+            $statusLower = strtolower($statusRaw);
+
+            if (!preg_match('/^\d+$/', preg_replace('/\s+/', '', $levelRaw))) {
+                continue;
+            }
+
+            if (!str_contains($statusLower, 'online') && !str_contains($statusLower, 'offline')) {
+                continue;
+            }
+
+            $status = str_contains($statusLower, 'online') ? 'online' : 'offline';
+
+            if ($name === '' || $level <= 0) {
+                continue;
+            }
+
+            $members[] = [
+                'name' => $name,
+                'vocation' => $vocation,
+                'level' => $level,
+                'online_status' => $status,
+            ];
+        }
+
+        return $members;
     }
 
     private function fetchHtml(string $url): ?string
