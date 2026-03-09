@@ -35,4 +35,10 @@ class GuildMember
     {
         return (int) $this->pdo->query('SELECT COUNT(*) FROM guild_members')->fetchColumn();
     }
+
+    public function lastSyncAt(): ?string
+    {
+        $value = $this->pdo->query('SELECT MAX(last_update) FROM guild_members')->fetchColumn();
+        return $value ?: null;
+    }
 }
